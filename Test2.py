@@ -27,7 +27,7 @@ if not (args.train or args.test or args.submit):
     print('No action given, use --train, --test or --submit')
     exit(0)
 
-env = RunEnv(args.visualize)
+env = (args.visualize)
 
 nb_actions = env.action_space.shape[0]
 

@@ -3,14 +3,15 @@ import numpy as np
 import sys
 
 from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Flatten, Input, concatenate, Dropout,Convolution2D
+from keras.layers import Dense, Activation, Flatten, Input, concatenate, Dropout
 from keras.optimizers import Adam
-
-import numpy as np
 import json
+import numpy as np
+
 from rl.agents import DDPGAgent
 from rl.memory import SequentialMemory
 from rl.random import OrnsteinUhlenbeckProcess
+from rl.callbacks import FileLogger, ModelIntervalCheckpoint,TrainEpisodeLogger
 
 from osim.env import *
 from osim.http.client import Client
@@ -21,8 +22,6 @@ import argparse
 import math
 import opensim
 
-from MyModule import DDPGAgent_Chang
-
 parser = argparse.ArgumentParser(description='Train or test neural net motor controller')
 parser.add_argument('--train', dest='train', action='store_true', default=False)
 parser.add_argument('--test', dest='test', action='store_false', default=True)
@@ -30,7 +29,6 @@ parser.add_argument('--steps', dest='steps', action='store', default=50000, type
 parser.add_argument('--visualize', dest='visualize', action='store_true', default=False)
 parser.add_argument('--model', dest='model', action='store', default="example.h5f")
 parser.add_argument('--token', dest='token', action='store', required=False)
-parser.add_argument('--resume', dest='resume', action='store_true', default=False)
 args = parser.parse_args()
 
 # Load walking environment
@@ -42,10 +40,10 @@ def process_observation(obs): #attempt to correct for the pelvis position
     # print(obs)
     for i in obs['body_pos']:
         if i != 'pelvis':
-            # obs['body_pos'][i][0] = obs['body_pos'][i][0] - obs['body_pos']['pelvis'][0]
+            obs['body_pos'][i][0] = obs['body_pos'][i][0] - obs['body_pos']['pelvis'][0]
             obs['body_pos'][i][2] = obs['body_pos'][i][2] - obs['body_pos']['pelvis'][2]
-    # obs['joint_pos']['back'][0] = obs['joint_pos']['back'][0] - obs['joint_pos']['ground_pelvis'][0]
-    # obs['joint_pos']['back'][0] = obs['joint_pos']['back'][0] - obs['joint_pos']['ground_pelvis'][0]
+
+    obs['joint_pos']['back'][0] = obs['joint_pos']['back'][0] - obs['joint_pos']['ground_pelvis'][0]
     return obs
 
 # wrap agent and critic
@@ -53,18 +51,17 @@ def actor_model(num_action,observation_shape):
     actor = Sequential()
 #    actor.add(Flatten(input_shape=(1,) + env.observation_space.shape))
     # actor.add(Lambda())
-    # actor.add(Convolution2D(64, 4, 4, subsample=(4,4),init=lambda shape, name: normal(shape, scale=0.01, name=name), border_mode='same'))
     actor.add(Flatten(input_shape=(1,) + observation_shape))
     actor.add(Dense(64))
-    actor.add(Activation('selu'))
+    actor.add(Activation('relu'))
     actor.add(Dropout(0.25)) #add by Chang
     # actor.add(Dense(32))
     # actor.add(Activation('relu'))
     # actor.add(Dropout(0.25)) #add by Chang
     actor.add(Dense(64))
-    actor.add(Activation('selu'))
+    actor.add(Activation('relu'))
     actor.add(Dense(num_action))
-    actor.add(Activation('tanh'))
+    actor.add(Activation('sigmoid'))
     print(actor.summary())
     return actor
 ##
@@ -80,7 +77,7 @@ def critic_model(num_action,observation_shape):
     # x = Dense(64)(x)
     # x = Activation('relu')(x)
     # x = Dropout(0.25)(x) #add by Chang
-    x = Dense(32)(x)
+    x = Dense(64)(x)
     x = Activation('relu')(x)
     x = Dense(1)(x)
     x = Activation('linear')(x)
@@ -93,8 +90,8 @@ def build_agent(num_action,observation_shape):
     random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size())
     actor = actor_model(num_action,observation_shape)
     critic,critic_action_input = critic_model(num_action,observation_shape)
-    agent = DDPGAgent_Chang(nb_actions=num_action, actor=actor, critic=critic, critic_action_input=critic_action_input,
-                  memory=memory, memory_interval=3,nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
+    agent = DDPGAgent(nb_actions=num_action, actor=actor, critic=critic, critic_action_input=critic_action_input,
+                  memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
                   random_process=random_process, gamma=.99, target_model_update=1e-3,
                   delta_clip=1.)
 
@@ -208,134 +205,119 @@ nallsteps = args.steps
 agent.compile(Adam(lr=.001, clipnorm=1.), metrics=['mae'])
 
 if args.train:
-    # probably doesn't work this way
-    if args.resume:
-        agent.load_weights(args.model)
-        print('resume')
-
     print('training')
-    # agent.fit(env, nb_steps=nallsteps, visualize=False, verbose=1, nb_max_episode_steps=env.time_limit, log_interval=10000)
+    log_filename = '/Users/liuchang/dqn_test_log.json'
+    f = open(log_filename, 'w')
+    # callbacks = [TrainEpisodeLogger()]
+    callbacks = [FileLogger(filepath=log_filename)]
+
+    agent.fit(env, nb_steps=nallsteps, visualize=False, verbose=2, callbacks=callbacks,nb_max_episode_steps=env.time_limit)
     # After training is done, we save the final weights.
 
     # implement my own fit
-    nb_max_episode_steps = env.time_limit
-    nb_max_start_steps = 0
-    log_interval=10000
-    max_steps = nallsteps
-    visualize = False
-    total_reward = 0
-    done = False
+    # nb_max_episode_steps = env.time_limit
+    # nb_max_start_steps = 0
+    # log_interval=10000
+    # max_steps = nallsteps
+    # visualize = False
+    # total_reward = 0
+    # done = False
+    #
+    # episode = np.int16(0)
+    # step = np.int16(0)
+    # observation = None
+    # episode_reward = None
+    # episode_step = None
+    #
+    # action_repetition = 1
+    # agent.training = True
+    # try:
+    #     while step < max_steps:
+    #         if observation is None:  # start of a new episode
+    #             # callbacks.on_episode_begin(episode)
+    #             episode_step = np.int16(0)
+    #             episode_reward = np.float32(0)
+    #
+    #             observation = env.reset(project = False)
+    #             # to start new simulations
+    #             nb_random_start_steps = 0 if nb_max_start_steps == 0 else np.random.randint(nb_max_start_steps)
+    #             action = env.action_space.sample()
+    #             observation, reward, done, info = env.step(action,project = False)
+    #             observation = process_observation(observation)
+    #             # project to np.array
+    #             observation = dict_to_list_Chang(observation)
+    #             # print('initialization')
+    #             # print(observation)
+    #     # print(observation)
+    #         assert episode_reward is not None
+    #         assert episode_step is not None
+    #         assert observation is not None
+    #         # print('initialization')
+    #         # This is were all of the work happens. We first perceive and compute the action
+    #                 # (forward step) and then use the reward to improve (backward step).
+    #         v = np.array(observation).reshape((env.observation_space.shape[0]))
+    #         action = agent.forward(v)
+    #
+    #         reward = np.float32(0)
+    #         accumulated_info = {}
+    #         done = False
+    #         abort = False
+    #
+    #         observation, reward, done, info = env.step(action.tolist(),project = False)
+    #         observation = process_observation(observation)
+    #         observation = dict_to_list_Chang(observation)
+    #         # v = np.array(observation).reshape((env.observation_space.shape[0]))
+    #         for key, value in info.items():
+    #             if not np.isreal(value):
+    #                 continue
+    #             if key not in accumulated_info:
+    #                 accumulated_info[key] = np.zeros_like(value)
+    #             accumulated_info[key] += value
+    #
+    #         # if done:
+    #         #     break
+    #         if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
+    #                 # Force a terminal state.
+    #             done = True
+    #         # print(agent.training)
+    #         metrics = agent.backward(reward, terminal=done)
+    #         # print (metrics)
+    #         episode_reward += reward
+    #
+    #         step_logs = {
+    #             'action': action,
+    #             'observation': observation,
+    #             'reward': reward,
+    #             'metrics': metrics,
+    #             'episode': episode,
+    #             'info': accumulated_info,
+    #         }
+    #
+    #         episode_step += 1
+    #         step += 1
+    #         print(step,'/',max_steps)
+    #         if done:
+    #             # We are in a terminal state but the agent hasn't yet seen it. We therefore
+    #             # perform one more forward-backward call and simply ignore the action before
+    #             # resetting the environment. We need to pass in `terminal=False` here since
+    #             # the *next* state, that is the state of the newly reset environment, is
+    #             # always non-terminal by convention.
+    #
+    #             agent.forward(v)
+    #             agent.backward(0., terminal=False)
+    #             episode_logs = {
+    #             'episode_reward': episode_reward,
+    #             'nb_episode_steps': episode_step,
+    #             'nb_steps': step,
+    #             }
+    #             print(episode_reward)
+    #             episode += 1
+    #             observation = None
+    #             episode_step = None
+    #             episode_reward = None
+    # except KeyboardInterrupt:
+    #     did_abort = True
 
-    episode = np.int16(0)
-    agent.step = np.int16(0)
-    observation = None
-    episode_reward = None
-    episode_step = None
-
-    head_pos = []
-    head_pos_new = []
-    action_repetition = 1
-    print (agent.training)
-    agent.training = True
-    try:
-        while agent.step < max_steps:
-            if observation is None:  # start of a new episode
-                # callbacks.on_episode_begin(episode)
-                episode_step = np.int16(0)
-                episode_reward = np.float32(0)
-
-                observation = env.reset(project = False)
-                # to start new simulations
-                nb_random_start_steps = 0 if nb_max_start_steps == 0 else np.random.randint(nb_max_start_steps)
-                action = env.action_space.sample()
-                observation, reward, done, info = env.step(action,project = False)
-                observation = process_observation(observation)
-                # project to np.array
-                observation = dict_to_list_Chang(observation)
-
-                # print('initialization')
-                # print(observation)
-        # print(observation)
-            assert episode_reward is not None
-            assert episode_step is not None
-            assert observation is not None
-            # print('initialization')
-            # This is were all of the work happens. We first perceive and compute the action
-                    # (forward step) and then use the reward to improve (backward step).
-            v = np.array(observation).reshape((env.observation_space.shape[0]))
-            action = agent.forward(v)
-
-            reward = np.float32(0)
-            accumulated_info = {}
-            done = False
-            abort = False
-
-            observation, reward, done, info = env.step(action.tolist(),project = False)
-            head_pos.append(observation['body_pos']['head'][0])
-            observation = process_observation(observation)
-            observation = dict_to_list_Chang(observation)
-            head_pos_new.append(observation[8])
-
-            # v = np.array(observation).reshape((env.observation_space.shape[0]))
-            for key, value in info.items():
-                if not np.isreal(value):
-                    continue
-                if key not in accumulated_info:
-                    accumulated_info[key] = np.zeros_like(value)
-                accumulated_info[key] += value
-
-            # if done:
-            #     break
-            if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
-                    # Force a terminal state.
-                done = True
-            # print(agent.training)
-            # print (agent.metrics_names)
-            metrics = agent.backward(reward, terminal=done)
-            # print (metrics)
-            episode_reward += reward
-
-            step_logs = {
-                'action': action,
-                'observation': observation,
-                'reward': reward,
-                'metrics': metrics,
-                'episode': episode,
-                'info': accumulated_info,
-            }
-
-            episode_step += 1
-            agent.step += 1
-            print(agent.step,'/',max_steps)
-            if done:
-                # We are in a terminal state but the agent hasn't yet seen it. We therefore
-                # perform one more forward-backward call and simply ignore the action before
-                # resetting the environment. We need to pass in `terminal=False` here since
-                # the *next* state, that is the state of the newly reset environment, is
-                # always non-terminal by convention.
-
-                agent.forward(v)
-                agent.backward(0., terminal=False)
-                episode_logs = {
-                'episode_reward': episode_reward,
-                'nb_episode_steps': episode_step,
-                'nb_steps': agent.step,
-                }
-                print(episode_reward)
-                episode += 1
-                observation = None
-                episode_step = None
-                episode_reward = None
-
-
-
-    except KeyboardInterrupt:
-        did_abort = True
-    log_filename = '/Users/liuchang/dqn_test_log.json'
-
-    with open(log_filename, "w") as write_file:
-        json.dump(head_pos, write_file)
-        json.dump(head_pos_new,write_file)
     agent.save_weights(args.model, overwrite=True)
 
 # If TEST and TOKEN, submit to crowdAI
@@ -357,7 +339,7 @@ if args.test:
     # The grader runs 3 simulations of at most 1000 steps each. We stop after the last one
     # agent.test(env, nb_episodes=10, visualize=False, nb_max_episode_steps=500)
 
-    for i in range(1000):
+    for i in range(500):
         v = np.array(project_observation).reshape((env.observation_space.shape[0]))
         action = agent.forward(v)
         [observation, reward, done, info] = env.step(action.tolist(),project = False)

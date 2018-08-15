@@ -17,7 +17,7 @@ for i in range(100):
     observation, reward, done, info = env.step(env.action_space.sample(), project = False)
     print(observation['body_pos']['pelvis'])
     print(env.get_state_desc()['body_pos']['pelvis'])
-    env.get_state_desc()['body_pos']['pelvis'][0] = 0
+
     print(env.get_state_desc()['body_pos']['pelvis'])
     # for keys in env.get_state_desc()['body_pos'].keys():
     #     print(keys)
