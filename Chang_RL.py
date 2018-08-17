@@ -22,6 +22,10 @@ import math
 import opensim
 
 from MyModule import DDPGAgent_Chang
+import tensorflow as tf
+# from MyModule import *
+# check if use gpu
+sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
 parser = argparse.ArgumentParser(description='Train or test neural net motor controller')
 parser.add_argument('--train', dest='train', action='store_true', default=False)
@@ -38,6 +42,10 @@ args = parser.parse_args()
 # Create networks for DDPG
 # Next, we build a very simple model.
 step_size = 0.01
+left_muscleIndex = np.array([1,3,5,7,8, 10, 12, 14, 16, 17, 18])
+left_muscleIndex = left_muscleIndex-1
+right_muscleIndex = np.array([2,4,6,9,11,13,15])
+right_muscleIndex = right_muscleIndex-1
 def process_observation(obs): #attempt to correct for the pelvis position
     # print(obs)
     for i in obs['body_pos']:
@@ -59,7 +67,7 @@ def actor_model(num_action,observation_shape):
     actor.add(Activation('selu'))
     actor.add(Dropout(0.25)) #add by Chang
     # actor.add(Dense(32))
-    # actor.add(Activation('relu'))
+    # actor.add(Activation('selu'))
     # actor.add(Dropout(0.25)) #add by Chang
     actor.add(Dense(64))
     actor.add(Activation('selu'))
@@ -94,7 +102,7 @@ def build_agent(num_action,observation_shape):
     actor = actor_model(num_action,observation_shape)
     critic,critic_action_input = critic_model(num_action,observation_shape)
     agent = DDPGAgent_Chang(nb_actions=num_action, actor=actor, critic=critic, critic_action_input=critic_action_input,
-                  memory=memory, memory_interval=3,nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
+                  memory=memory, memory_interval=10,nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
                   random_process=random_process, gamma=.99, target_model_update=1e-3,
                   delta_clip=1.)
 
@@ -185,17 +193,30 @@ def dict_to_list_Chang(state_desc):
         res += state_desc["joint_vel"][joint]
         res += state_desc["joint_acc"][joint]
         # print(joint,len(res)) # length = 95
-    for muscle in sorted(state_desc["muscles"].keys()):
-        res += [state_desc["muscles"][muscle]["activation"]]
-        res += [state_desc["muscles"][muscle]["fiber_length"]]
-        res += [state_desc["muscles"][muscle]["fiber_velocity"]]
 
-    cm_pos = [state_desc["misc"]["mass_center_pos"][i] - pelvis[i] for i in range(2)]
-    res = res + cm_pos + state_desc["misc"]["mass_center_vel"] + state_desc["misc"]["mass_center_acc"]
-    # print(len(res))
+    # for muscle in sorted(state_desc["muscles"].keys()):
+    #     res += [state_desc["muscles"][muscle]["activation"]]
+    #     res += [state_desc["muscles"][muscle]["fiber_length"]]
+    #     res += [state_desc["muscles"][muscle]["fiber_velocity"]]
+    #     # print(muscle)
+    # cm_pos = [state_desc["misc"]["mass_center_pos"][i] - pelvis[i] for i in range(2)]
+    # res = res + cm_pos + state_desc["misc"]["mass_center_vel"] + state_desc["misc"]["mass_center_acc"]
+
     return res
+def muscleActivationHack(act_l):
+    # act_l should be an array
+    # left_muscleIndex = np.array([1,3,5,7,8, 10, 12, 14, 16, 17, 18])
+    # left_muscleIndex = left_muscleIndex-1
+    # right_muscleIndex = np.array([2,4,6,9,11,13,15])
+    # right_muscleIndex = right_muscleIndex-1
 
-env = ProstheticsEnv(args.visualize)
+    leftActivation = np.where(act_l[left_muscleIndex]>0.5)
+    for i in leftActivation:
+        if i in np.array([0,2,4,6]):
+            act_l[i+1] *= 0.5
+    return act_l
+
+env = ProstheticsEnv_Chang(args.visualize)
 observation = env.reset(project = False) #keep as dictionary format
 # print(observation)
 nb_actions = env.action_space.shape[0]
@@ -248,11 +269,16 @@ if args.train:
                 # to start new simulations
                 nb_random_start_steps = 0 if nb_max_start_steps == 0 else np.random.randint(nb_max_start_steps)
                 action = env.action_space.sample()
+                action_temp = np.array(action)
+                action = muscleActivationHack(action_temp).tolist()
+                # add initialize parameters for the models
+
                 observation, reward, done, info = env.step(action,project = False)
                 observation = process_observation(observation)
                 # project to np.array
                 observation = dict_to_list_Chang(observation)
-
+                print(env.real_reward())
+                print(env.reward())
                 # print('initialization')
                 # print(observation)
         # print(observation)
@@ -271,10 +297,12 @@ if args.train:
             abort = False
 
             observation, reward, done, info = env.step(action.tolist(),project = False)
-            head_pos.append(observation['body_pos']['head'][0])
+            print(observation["body_vel"]["pelvis"][0])
             observation = process_observation(observation)
             observation = dict_to_list_Chang(observation)
-            head_pos_new.append(observation[8])
+
+            print(env.real_reward())
+            print(env.reward())
 
             # v = np.array(observation).reshape((env.observation_space.shape[0]))
             for key, value in info.items():
