@@ -397,8 +397,8 @@ if args.test:
         real_reward = env.real_reward()
         total_reward += reward
         total_real_reward += real_reward
-        print(observation['body_vel']['pelvis'][0])
-        if observation["body_pos"]["pelvis"][1] < 0.6:
+        # print(observation['body_vel']['pelvis'][0])
+        if observation[0] < 0.6:
             break
     print(total_reward)
     print(total_real_reward)
