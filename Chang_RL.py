@@ -267,7 +267,7 @@ if args.train:
                 episode_step = np.int16(0)
                 episode_reward = np.float32(0)
 
-                observation = env.reset(project = False)
+                observation = env.reset()
                 # to start new simulations
                 nb_random_start_steps = 0 if nb_max_start_steps == 0 else np.random.randint(nb_max_start_steps)
                 action = env.action_space.sample()
@@ -303,7 +303,7 @@ if args.train:
             # observation = dict_to_list_Chang(observation)
 
 
-            
+
             # v = np.array(observation).reshape((env.observation_space.shape[0]))
             for key, value in info.items():
                 if not np.isreal(value):
@@ -376,9 +376,9 @@ if args.test:
     total_reward = 0
     total_real_reward = 0
     # Create environment
-    observation = env.reset(project = False)
+    observation = env.reset()
     # print(observation)
-    project_observation = dict_to_list_Chang(observation)
+    # project_observation = dict_to_list_Chang(observation)
     # print(project_observation)
     # agent.test(env, nb_episodes=3, visualize=False, nb_max_episode_steps=1000)
 
@@ -387,12 +387,12 @@ if args.test:
     # agent.test(env, nb_episodes=10, visualize=False, nb_max_episode_steps=500)
 
     for i in range(1000):
-        v = np.array(project_observation).reshape((env.observation_space.shape[0]))
+        v = np.array(observation).reshape((env.observation_space.shape[0]))
         action = agent.forward(v)
-        [observation, reward, done, info] = env.step(action.tolist(),project = False)
-        observation = process_observation(observation)
+        [observation, reward, done, info] = env.step(action.tolist())
+        # observation = process_observation(observation)
         # project to np.array
-        project_observation = dict_to_list_Chang(observation)
+        # project_observation = dict_to_list_Chang(observation)
 
         real_reward = env.real_reward()
         total_reward += reward
