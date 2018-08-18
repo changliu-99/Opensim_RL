@@ -99,12 +99,12 @@ def critic_model(num_action,observation_shape):
     return critic, action_input
 # Set up the agent for training
 def build_agent(num_action,observation_shape):
-    memory = SequentialMemory(limit=100000, window_length=1)
+    memory = SequentialMemory(limit=1000000, window_length=1)
     random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size())
     actor = actor_model(num_action,observation_shape)
     critic,critic_action_input = critic_model(num_action,observation_shape)
     agent = DDPGAgent_Chang(nb_actions=num_action, actor=actor, critic=critic, critic_action_input=critic_action_input,
-                  memory=memory, memory_interval=10,nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
+                  memory=memory, memory_interval=5,nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
                   random_process=random_process, gamma=.99, target_model_update=1e-3,
                   delta_clip=1.)
 
