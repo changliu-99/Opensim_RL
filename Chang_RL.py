@@ -334,7 +334,7 @@ if args.train:
 
             episode_step += 1
             agent.step += 1
-            print(agent.step,'/',max_steps)
+            #print(agent.step,'/',max_steps)
             if done:
                 # We are in a terminal state but the agent hasn't yet seen it. We therefore
                 # perform one more forward-backward call and simply ignore the action before
@@ -349,7 +349,7 @@ if args.train:
                 'nb_episode_steps': episode_step,
                 'nb_steps': agent.step,
                 }
-                print(episode_reward)
+                print(episode_reward, ' steps=',episode_step,' ',agent.step,'/',max_steps)
                 episode += 1
                 observation = None
                 episode_step = None
@@ -397,8 +397,8 @@ if args.test:
         real_reward = env.real_reward()
         total_reward += reward
         total_real_reward += real_reward
-        print(observation['body_vel']['pelvis'][0])
-        if observation["body_pos"]["pelvis"][1] < 0.6:
+
+        if observation[0] < 0.6:
             break
     print(total_reward)
     print(total_real_reward)
