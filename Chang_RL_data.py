@@ -24,9 +24,11 @@ import opensim
 from MyModule import DDPGAgent_Chang
 import tensorflow as tf
 import pandas as pd
-
+import os
 ##
-path = '/Users/liuchang/Google Drive/2018_Research/OpenSim_RL/Code/ExperimentData/action.csv'
+current_path = os.path.dirname(os.path.realpath(__file__))
+path = os.path.join(current_path,"action.csv")
+print(path)
 label=['abd_l','abd_r','add_l','add_r','bifemsh_l','bifemsh_r','gastroc_l',
     'glut_max_l','glut_max_r','hamstrings_l','hamstrings_r','iliopsoas_l',
     'iliopsoas_r','rect_fem_l','rect_fem_r','soleus_l','tib_ant_l','vasti_l',
@@ -132,7 +134,7 @@ def build_agent(num_action,observation_shape):
     critic,critic_action_input = critic_model(num_action,observation_shape)
     agent = DDPGAgent_Chang(nb_actions=num_action, actor=actor, critic=critic, critic_action_input=critic_action_input,
                   memory=memory, memory_interval=5,nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
-                  random_process=random_process, gamma=.99, target_model_update=1e-3,
+                  batch_size = 64,random_process=random_process, gamma=.99, target_model_update=1e-3,
                   delta_clip=1.)
 
     return agent
