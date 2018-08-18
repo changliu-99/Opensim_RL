@@ -65,14 +65,16 @@ def actor_model(num_action,observation_shape):
     # actor.add(Lambda())
     # actor.add(Convolution2D(64, 4, 4, subsample=(4,4),init=lambda shape, name: normal(shape, scale=0.01, name=name), border_mode='same'))
     actor.add(Flatten(input_shape=(1,) + observation_shape))
-    actor.add(Dense(64))
-    actor.add(Activation('selu'))
-    actor.add(Dropout(0.25)) #add by Chang
+    actor.add(Dense(128))
+    actor.add(Activation('relu'))
+    # actor.add(Dropout(0.25)) #add by Chang
     # actor.add(Dense(32))
     # actor.add(Activation('selu'))
     # actor.add(Dropout(0.25)) #add by Chang
+    actor.add(Dense(128))
+    actor.add(Activation('relu'))
     actor.add(Dense(64))
-    actor.add(Activation('selu'))
+    actor.add(Activation('relu'))
     actor.add(Dense(num_action))
     actor.add(Activation('tanh'))
     print(actor.summary())
@@ -84,14 +86,14 @@ def critic_model(num_action,observation_shape):
     observation_input = Input(shape=(1,) + observation_shape, name='observation_input')
     flattened_observation = Flatten()(observation_input)
     x = concatenate([action_input, flattened_observation])
-    x = Dense(64)(x)
-    x = Activation('relu')(x)
-    x = Dropout(0.25)(x) #add by Chang
-    # x = Dense(64)(x)
-    # x = Activation('relu')(x)
+    x = Dense(128)(x)
+    x = Activation('selu')(x)
     # x = Dropout(0.25)(x) #add by Chang
-    x = Dense(32)(x)
-    x = Activation('relu')(x)
+    x = Dense(64)(x)
+    x = Activation('selu')(x)
+    # x = Dropout(0.25)(x) #add by Chang
+    x = Dense(64)(x)
+    x = Activation('selu')(x)
     x = Dense(1)(x)
     x = Activation('linear')(x)
     critic = Model(inputs=[action_input, observation_input], outputs=x)
