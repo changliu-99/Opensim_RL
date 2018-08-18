@@ -27,6 +27,8 @@ import tensorflow as tf
 # check if use gpu
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
+# from MyModule import *
+
 parser = argparse.ArgumentParser(description='Train or test neural net motor controller')
 parser.add_argument('--train', dest='train', action='store_true', default=False)
 parser.add_argument('--test', dest='test', action='store_false', default=True)
@@ -273,14 +275,13 @@ if args.train:
                 action = muscleActivationHack(action_temp).tolist()
                 # add initialize parameters for the models
 
-                observation, reward, done, info = env.step(action,project = False)
-                observation = process_observation(observation)
+                observation, reward, done, info = env.step(action)
+                # observation = process_observation(observation)
                 # project to np.array
-                observation = dict_to_list_Chang(observation)
-                print(env.real_reward())
-                print(env.reward())
-                # print('initialization')
-                # print(observation)
+                # observation = dict_to_list_Chang(observation)
+                # print(env.real_reward())
+                # print(env.reward())
+
         # print(observation)
             assert episode_reward is not None
             assert episode_step is not None
@@ -296,14 +297,13 @@ if args.train:
             done = False
             abort = False
 
-            observation, reward, done, info = env.step(action.tolist(),project = False)
-            print(observation["body_vel"]["pelvis"][0])
-            observation = process_observation(observation)
-            observation = dict_to_list_Chang(observation)
+            observation, reward, done, info = env.step(action.tolist())
 
-            print(env.real_reward())
-            print(env.reward())
+            # observation = process_observation(observation)
+            # observation = dict_to_list_Chang(observation)
 
+
+            
             # v = np.array(observation).reshape((env.observation_space.shape[0]))
             for key, value in info.items():
                 if not np.isreal(value):
@@ -366,7 +366,7 @@ if args.train:
         json.dump(head_pos_new,write_file)
     agent.save_weights(args.model, overwrite=True)
 
-# If TEST and TOKEN, submit to crowdAI
+# If TEST and TOKEN, submit to csrowdAI
 if args.test:
     visualize = True
     print('test')
@@ -374,6 +374,7 @@ if args.test:
     # Settings
 
     total_reward = 0
+    total_real_reward = 0
     # Create environment
     observation = env.reset(project = False)
     # print(observation)
@@ -393,10 +394,15 @@ if args.test:
         # project to np.array
         project_observation = dict_to_list_Chang(observation)
 
+        real_reward = env.real_reward()
         total_reward += reward
+        total_real_reward += real_reward
+        print(observation['body_vel']['pelvis'][0])
         if observation["body_pos"]["pelvis"][1] < 0.6:
             break
     print(total_reward)
+    print(total_real_reward)
+
         # if done:
         #     observation = env.reset()
             # if not observation:
