@@ -252,8 +252,9 @@ def muscleActivationHack(act_l):
             act_l[i+1] *= 0.5
     return act_l
 
-def initialSample_action(action,experiment_act):
+def initialSample_action(experiment_act):
     # c = list(range(0, 256))
+    action = [0]*19
     ind = np.asscalar(np.random.choice(len(experiment_act),1))
     # print(ind)
     action[9] = experiment_act[ind][9]
@@ -319,7 +320,7 @@ if args.train:
                 nb_random_start_steps = 0 if nb_max_start_steps == 0 else np.random.randint(nb_max_start_steps)
                 # action = env.action_space.sample()
                 # action_copy = action
-                action = initialSample_action(action_copy,a)
+                action = initialSample_action(a)
                 # add initialize parameters for the models
 
                 observation, reward, done, info = env.step(action)
@@ -401,7 +402,6 @@ if args.train:
                 observation = None
                 episode_step = None
                 episode_reward = None
-
 
 
     except KeyboardInterrupt:
