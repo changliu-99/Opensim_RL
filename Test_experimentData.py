@@ -15,6 +15,8 @@ af = actionData.fillna(0)
 a = af.values.tolist()
 print(len(a))
 print(a)
+from rl.memory import SequentialMemory
+from rl.random import OrnsteinUhlenbeckProcess
 
 env = ProstheticsEnv(visualize=True)
 observation = env.reset()
@@ -37,6 +39,12 @@ def initialSample_action(action,experiment_act):
     action[15] = experiment_act[ind][15]
     action[16] = experiment_act[ind][16]
     # print(action)
+    print(action)
+    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size())
+
+    action += random_process.sample()
+    print(action)
+
     return action
 
 for i in range(100):

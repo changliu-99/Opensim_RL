@@ -41,6 +41,11 @@ actionData=pd.read_csv(path,names=label,header=0)
 af = actionData.fillna(0)
 a = af.values.tolist()
 
+### add another file
+current_path = os.path.dirname(os.path.realpath(__file__))
+path = os.path.join(current_path,"action_new.csv")
+actionData_new=pd.read_csv(path,header=1)
+
 
 env = ProstheticsEnv(visualize=True)
 observation = env.reset()
@@ -92,7 +97,7 @@ def actor_model(num_action,observation_shape):
     # actor.add(Lambda())
     # actor.add(Convolution2D(64, 4, 4, subsample=(4,4),init=lambda shape, name: normal(shape, scale=0.01, name=name), border_mode='same'))
     actor.add(Flatten(input_shape=(1,) + observation_shape))
-    actor.add(Dense(128))
+    actor.add(Dense(64))
     actor.add(Activation('relu'))
     # actor.add(Dropout(0.25)) #add by Chang
     # actor.add(Dense(32))
@@ -256,6 +261,8 @@ def initialSample_action(action,experiment_act):
     action[15] = experiment_act[ind][15]
     action[16] = experiment_act[ind][16]
     # print(action)
+    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size())
+    action += random_process.sample()
     return action
 
 env = ProstheticsEnv_Chang(args.visualize)
@@ -310,8 +317,8 @@ if args.train:
                 observation = env.reset()
                 # to start new simulations
                 nb_random_start_steps = 0 if nb_max_start_steps == 0 else np.random.randint(nb_max_start_steps)
-                action = env.action_space.sample()
-                action_copy = action
+                # action = env.action_space.sample()
+                # action_copy = action
                 action = initialSample_action(action_copy,a)
                 # add initialize parameters for the models
 
@@ -399,6 +406,7 @@ if args.train:
 
     except KeyboardInterrupt:
         did_abort = True
+        agent.save_weights(args.model, overwrite=True)
     log_filename = '/Users/liuchang/dqn_test_log.json'
 
     with open(log_filename, "w") as write_file:
