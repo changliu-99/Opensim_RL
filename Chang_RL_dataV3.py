@@ -104,16 +104,10 @@ def actor_model(num_action,observation_shape):
     actor.add(Flatten(input_shape=(1,) + observation_shape))
     actor.add(Dense(64))
     actor.add(Activation('relu'))
-    # actor.add(Dropout(0.25)) #add by Chang
-    # actor.add(Dense(32))
-    # actor.add(Activation('selu'))
-    # actor.add(Dropout(0.25)) #add by Chang
-    # actor.add(Dense(128))
-    # actor.add(Activation('relu'))
     actor.add(Dense(64))
     actor.add(Activation('relu'))
     actor.add(Dense(num_action))
-    actor.add(Activation('sigmoid'))
+    actor.add(Activation('tanh'))
     print(actor.summary())
     return actor
 ##
@@ -125,10 +119,6 @@ def critic_model(num_action,observation_shape):
     x = concatenate([action_input, flattened_observation])
     x = Dense(128)(x)
     x = Activation('selu')(x)
-    # x = Dropout(0.25)(x) #add by Chang
-    # x = Dense(64)(x)
-    # x = Activation('selu')(x)
-    # x = Dropout(0.25)(x) #add by Chang
     x = Dense(64)(x)
     x = Activation('selu')(x)
     x = Dense(1)(x)
@@ -159,103 +149,6 @@ def build_agent(num_action,observation_shape):
 # def experimentData_train():
 
 #function to convert state_desc to list (https://www.endtoend.ai/blog/ai-for-prosthetics-3/)
-def dict_to_list(state_desc):
-    res = []
-
-    # Body Observations
-    for info_type in ['body_pos', 'body_pos_rot',
-                      'body_vel', 'body_vel_rot',
-                      'body_acc', 'body_acc_rot']:
-        for body_part in ['calcn_l', 'talus_l', 'tibia_l', 'toes_l',
-                          'femur_l', 'femur_r', 'head', 'pelvis',
-                          'torso', 'pros_foot_r', 'pros_tibia_r']:
-            res += state_desc[info_type][body_part]
-
-    # Joint Observations
-    # Neglecting `back_0`, `mtp_l`, `subtalar_l` since they do not move
-    for info_type in ['joint_pos', 'joint_vel', 'joint_acc']:
-        for joint in ['ankle_l', 'ankle_r', 'back', 'ground_pelvis',
-                      'hip_l', 'hip_r', 'knee_l', 'knee_r']:
-            res += state_desc[info_type][joint]
-
-    # Muscle Observations
-    for muscle in ['abd_l', 'abd_r', 'add_l', 'add_r',
-                   'bifemsh_l', 'bifemsh_r', 'gastroc_l',
-                   'glut_max_l', 'glut_max_r',
-                   'hamstrings_l', 'hamstrings_r',
-                   'iliopsoas_l', 'iliopsoas_r', 'rect_fem_l', 'rect_fem_r',
-                   'soleus_l', 'tib_ant_l', 'vasti_l', 'vasti_r']:
-        res.append(state_desc['muscles'][muscle]['activation'])
-        res.append(state_desc['muscles'][muscle]['fiber_force'])
-        res.append(state_desc['muscles'][muscle]['fiber_length'])
-        res.append(state_desc['muscles'][muscle]['fiber_velocity'])
-
-    # Force Observations
-    # Neglecting forces corresponding to muscles as they are redundant with
-    # `fiber_forces` in muscles dictionaries
-    for force in ['AnkleLimit_l', 'AnkleLimit_r',
-                  'HipAddLimit_l', 'HipAddLimit_r',
-                  'HipLimit_l', 'HipLimit_r', 'KneeLimit_l', 'KneeLimit_r']:
-        res += state_desc['forces'][force]
-
-        # Center of Mass Observations
-        res += state_desc['misc']['mass_center_pos']
-        res += state_desc['misc']['mass_center_vel']
-        res += state_desc['misc']['mass_center_acc']
-    print (len(res))
-    return res
-def dict_to_list_Chang(state_desc):
-    res = []
-    pelvis = None
-    for body_part in ["pelvis", "head","torso","toes_l","toes_r","talus_l","talus_r"]:
-        if body_part in ["toes_r","talus_r"]:
-            res += [0] * 9
-            # print(body_part,len(res))
-            continue
-        cur = []
-        cur += state_desc["body_pos"][body_part][0:2]
-        cur += state_desc["body_vel"][body_part][0:2]
-        cur += state_desc["body_acc"][body_part][0:2]
-        cur += state_desc["body_pos_rot"][body_part][2:]
-        cur += state_desc["body_vel_rot"][body_part][2:]
-        cur += state_desc["body_acc_rot"][body_part][2:]
-        if body_part == "pelvis":
-            pelvis = cur
-            res += cur[1:]
-        else:
-            cur_upd = cur
-            cur_upd[:2] = [cur[i] - pelvis[i] for i in range(2)]
-            cur_upd[6:7] = [cur[i] - pelvis[i] for i in range(6,7)]
-            res += cur
-
-        # print(body_part,len(res)) #length = 62
-    for joint in ["ankle_l","ankle_r","back","hip_l","hip_r","knee_l","knee_r"]:
-        res += state_desc["joint_pos"][joint]
-        res += state_desc["joint_vel"][joint]
-        res += state_desc["joint_acc"][joint]
-        # print(joint,len(res)) # length = 95
-
-    # for muscle in sorted(state_desc["muscles"].keys()):
-    #     res += [state_desc["muscles"][muscle]["activation"]]
-    #     res += [state_desc["muscles"][muscle]["fiber_length"]]
-    #     res += [state_desc["muscles"][muscle]["fiber_velocity"]]
-    #     # print(muscle)
-    # cm_pos = [state_desc["misc"]["mass_center_pos"][i] - pelvis[i] for i in range(2)]
-    # res = res + cm_pos + state_desc["misc"]["mass_center_vel"] + state_desc["misc"]["mass_center_acc"]
-
-    return res
-def muscleActivationHack(act_l):
-    # act_l should be an array
-    # left_muscleIndex = np.array([1,3,5,7,8, 10, 12, 14, 16, 17, 18])
-    # left_muscleIndex = left_muscleIndex-1
-    # right_muscleIndex = np.array([2,4,6,9,11,13,15])
-    # right_muscleIndex = right_muscleIndex-1
-
-    leftActivation = np.where(act_l[left_muscleIndex]>0.5)
-    for i in leftActivation:
-        if i in np.array([0,2,4,6]):
-            act_l[i+1] *= 0.5
-    return act_l
 
 def initialSample_action(experiment_act):
     # c = list(range(0, 256))
@@ -270,6 +163,7 @@ def initialSample_action(experiment_act):
     random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size())
     action += random_process.sample()
     return action
+
 def initialSample_action_new(experiment_act):
     # c = list(range(0, 256))
     action = [0]*19
@@ -292,7 +186,7 @@ def injectNoise(action):
     action += random_process.sample()
     return action
 
-env = ProstheticsEnv_Chang(args.visualize)
+env = ProstheticsEnv_Chang(args.visualize,skip_frame=3)
 observation = env.reset(project = False) #keep as dictionary format
 # print(observation)
 nb_actions = env.action_space.shape[0]
@@ -305,7 +199,7 @@ nallsteps = args.steps
 agent.compile(Adam(lr=.001, clipnorm=1.), metrics=['mae'])
 
 if args.train:
-    # probably doesn't work this way
+    # TODO: warp this training as function
     if args.resume:
         agent.load_weights(args.model)
         print('resume')
@@ -328,6 +222,7 @@ if args.train:
     observation = None
     episode_reward = None
     episode_step = None
+    episode_reward_log =[]
 
     head_pos = []
     head_pos_new = []
@@ -341,22 +236,12 @@ if args.train:
                 # callbacks.on_episode_begin(episode)
                 episode_step = np.int16(0)
                 episode_reward = np.float32(0)
-
-                observation = env.reset()
+                seed = random.randrange(2**32-2)
+                observation = env.reset(seed=seed)
                 # to start new simulations
-                nb_random_start_steps = 0 if nb_max_start_steps == 0 else np.random.randint(nb_max_start_steps)
-                # action = env.action_space.sample()
-                # action_copy = action
                 action = initialSample_action_new(a_new)
-                # print (action)
                 # add initialize parameters for the models
-
                 observation, reward, done, info = env.step(action)
-                # observation = process_observation(observation)
-                # project to np.array
-                # observation = dict_to_list_Chang(observation)
-                # print(env.real_reward())
-                # print(env.reward())
 
         # print(observation)
             assert episode_reward is not None
@@ -424,6 +309,7 @@ if args.train:
                 'nb_steps': agent.step,
                 }
                 print(episode_reward, ' steps=',episode_step,' ',agent.step,'/',max_steps)
+                episode_reward_log.append(episode_reward)
                 episode += 1
                 observation = None
                 episode_step = None
@@ -433,11 +319,11 @@ if args.train:
     except KeyboardInterrupt:
         did_abort = True
         agent.save_weights(args.model, overwrite=True)
-    log_filename = '/Users/liuchang/dqn_test_log.json'
+    log_filename = '/Users/liuchang/test_log.json'
 
     with open(log_filename, "w") as write_file:
-        json.dump(head_pos, write_file)
-        json.dump(head_pos_new,write_file)
+        json.dump(episode_reward, write_file)
+
     agent.save_weights(args.model, overwrite=True)
 
 # If TEST and TOKEN, submit to csrowdAI
