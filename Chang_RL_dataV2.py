@@ -13,6 +13,7 @@ from rl.memory import SequentialMemory
 from rl.random import OrnsteinUhlenbeckProcess
 
 from osim.env import *
+
 from osim.http.client import Client
 
 from keras.optimizers import RMSprop
@@ -22,6 +23,7 @@ import math
 import opensim
 
 from MyModule import DDPGAgent_Chang
+from MyModule import ProstheticsEnv_Chang
 import tensorflow as tf
 import pandas as pd
 import os
