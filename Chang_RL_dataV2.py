@@ -51,9 +51,6 @@ label_new = ['bifemsh_l','gastroc_l','gastrocM_l','glut_max1_l','glut_max2_l',
 af_new = actionData_new.fillna(0)
 a_new = af_new.values.tolist()
 
-env = ProstheticsEnv(visualize=True)
-observation = env.reset()
-
 # from MyModule import *
 # check if use gpu
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
@@ -243,18 +240,6 @@ def dict_to_list_Chang(state_desc):
     # res = res + cm_pos + state_desc["misc"]["mass_center_vel"] + state_desc["misc"]["mass_center_acc"]
 
     return res
-def muscleActivationHack(act_l):
-    # act_l should be an array
-    # left_muscleIndex = np.array([1,3,5,7,8, 10, 12, 14, 16, 17, 18])
-    # left_muscleIndex = left_muscleIndex-1
-    # right_muscleIndex = np.array([2,4,6,9,11,13,15])
-    # right_muscleIndex = right_muscleIndex-1
-
-    leftActivation = np.where(act_l[left_muscleIndex]>0.5)
-    for i in leftActivation:
-        if i in np.array([0,2,4,6]):
-            act_l[i+1] *= 0.5
-    return act_l
 
 def initialSample_action(experiment_act):
     # c = list(range(0, 256))
@@ -285,8 +270,9 @@ def initialSample_action_new(experiment_act):
     random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size())
     action += random_process.sample()
     return action
+
 env = ProstheticsEnv_Chang(args.visualize)
-observation = env.reset(project = False) #keep as dictionary format
+# observation = env.reset(project = False) #keep as dictionary format
 # print(observation)
 nb_actions = env.action_space.shape[0]
 observation_shape = env.observation_space.shape
