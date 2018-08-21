@@ -3,6 +3,7 @@ from osim.env import OsimModel
 import pandas as pd
 import numpy as np
 import random
+import os
 # read csv
 path = '/Users/liuchang/Google Drive/2018_Research/OpenSim_RL/Code/ExperimentData/action.csv'
 label=['abd_l','abd_r','add_l','add_r','bifemsh_l','bifemsh_r','gastroc_l',
@@ -17,7 +18,10 @@ print(len(a))
 print(a)
 from rl.memory import SequentialMemory
 from rl.random import OrnsteinUhlenbeckProcess
-
+current_path = os.path.dirname(os.path.realpath(__file__))
+path = os.path.join(current_path,"action_new.csv")
+actionData_new=pd.read_csv(path,header=1)
+print(actionData_new)
 env = ProstheticsEnv(visualize=True)
 observation = env.reset()
 

@@ -45,7 +45,11 @@ a = af.values.tolist()
 current_path = os.path.dirname(os.path.realpath(__file__))
 path = os.path.join(current_path,"action_new.csv")
 actionData_new=pd.read_csv(path,header=1)
-
+label_new = ['bifemsh_l','gastroc_l','gastrocM_l','glut_max1_l','glut_max2_l',
+    'glut_max3_l','glmed1','glmed2','glmed3','rect_fem_l','semimem_l','semiten_','soleus_r',
+    'tibant_l','vaslat','vasmed_l']
+af_new = actionData_new.fillna(0)
+a_new = af_new.values.tolist()
 
 env = ProstheticsEnv(visualize=True)
 observation = env.reset()
@@ -265,7 +269,22 @@ def initialSample_action(experiment_act):
     random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size())
     action += random_process.sample()
     return action
-
+def initialSample_action_new(experiment_act):
+    # c = list(range(0, 256))
+    action = [0]*19
+    ind = np.asscalar(np.random.choice(len(experiment_act),1))
+    # print(ind)
+    action[0] = experiment_act[ind][6]
+    action[4] = experiment_act[ind][0]
+    action[6] = experiment_act[ind][1]
+    action[7] = experiment_act[ind][3]
+    action[16] = experiment_act[ind][13]
+    action[17] = experiment_act[ind][14]
+    action[13] = experiment_act[ind][9]
+    # print(action)
+    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size())
+    action += random_process.sample()
+    return action
 env = ProstheticsEnv_Chang(args.visualize)
 observation = env.reset(project = False) #keep as dictionary format
 # print(observation)
@@ -320,7 +339,7 @@ if args.train:
                 nb_random_start_steps = 0 if nb_max_start_steps == 0 else np.random.randint(nb_max_start_steps)
                 # action = env.action_space.sample()
                 # action_copy = action
-                action = initialSample_action(a)
+                action = initialSample_action_new(a_new)
                 # add initialize parameters for the models
 
                 observation, reward, done, info = env.step(action)
@@ -428,28 +447,28 @@ if args.test:
     # print(observation)
     # project_observation = dict_to_list_Chang(observation)
     # print(project_observation)
-    agent.test(env, nb_episodes=3, visualize=True, nb_max_episode_steps=1000)
+    # agent.test(env, nb_episodes=3, visualize=False, nb_max_episode_steps=1000)
 
     # Run a single step
     # The grader runs 3 simulations of at most 1000 steps each. We stop after the last one
     # agent.test(env, nb_episodes=10, visualize=False, nb_max_episode_steps=500)
 
-    # for i in range(1000):
-    #     v = np.array(observation).reshape((env.observation_space.shape[0]))
-    #     action = agent.forward(v)
-    #     [observation, reward, done, info] = env.step(action.tolist())
-    #     # observation = process_observation(observation)
-    #     # project to np.array
-    #     # project_observation = dict_to_list_Chang(observation)
-    #
-    #     real_reward = env.real_reward()
-    #     total_reward += reward
-    #     total_real_reward += real_reward
-    #
-    #     if observation[0] < 0.6:
-    #         break
-    # print(total_reward)
-    # print(total_real_reward)
+    for i in range(1000):
+        v = np.array(observation).reshape((env.observation_space.shape[0]))
+        action = agent.forward(v)
+        [observation, reward, done, info] = env.step(action.tolist())
+        # observation = process_observation(observation)
+        # project to np.array
+        # project_observation = dict_to_list_Chang(observation)
+
+        real_reward = env.real_reward()
+        total_reward += reward
+        total_real_reward += real_reward
+
+        if observation[0] < 0.6:
+            break
+    print(total_reward)
+    print(total_real_reward)
 
         # if done:
         #     observation = env.reset()
