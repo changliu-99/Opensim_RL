@@ -17,6 +17,7 @@ class ProstheticsEnv_Chang(OsimEnv):
     time_limit = 300
 
     def __init__(self, visualize = True, integrator_accuracy = 5e-5*2,skip_frame=5):
+        super(ProstheticsEnv_Chang, self).__init__(visualize = visualize, integrator_accuracy = integrator_accuracy)
         self.model_paths = {}
         self.model_paths["3D_pros"] = os.path.join(os.path.dirname(__file__), '../models/gait14dof22musc_pros_20180507.osim')
         self.model_paths["3D"] = os.path.join(os.path.dirname(__file__), '../models/gait14dof22musc_20170320.osim')
@@ -24,7 +25,6 @@ class ProstheticsEnv_Chang(OsimEnv):
         self.model_paths["2D"] = os.path.join(os.path.dirname(__file__), '../models/gait14dof22musc_planar_20170320.osim')
         self.model_path = self.model_paths[self.get_model_key()]
         self.skip_frame = skip_frame
-        super(ProstheticsEnv_Chang, self).__init__(visualize = visualize, integrator_accuracy = integrator_accuracy,skip_frame=skip_frame)
 
     def change_model(self, model='3D', prosthetic=True, difficulty=0, seed=None):
         if (self.model, self.prosthetic) != (model, prosthetic):
