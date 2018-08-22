@@ -11,6 +11,8 @@ from rl.core import Agent
 from rl.random import OrnsteinUhlenbeckProcess
 from rl.util import *
 import json
+import pandas as pd
+
 current_path = os.path.dirname(os.path.realpath(__file__))
 path = os.path.join(current_path,"../action_new.csv")
 actionData_new=pd.read_csv(path,header=1)
@@ -20,23 +22,7 @@ label_new = ['bifemsh_l','gastroc_l','gastrocM_l','glut_max1_l','glut_max2_l',
 af_new = actionData_new.fillna(0)
 a_new = af_new.values.tolist()
 
-def initialSample_action_new(experiment_act):
-    # c = list(range(0, 256))
-    action = [0]*19
-    ind = np.asscalar(np.random.choice(len(experiment_act),1))
-    # print(ind)
-    action[0] = experiment_act[ind][6]
-    action[4] = experiment_act[ind][0]
-    action[6] = experiment_act[ind][1]
-    action[7] = experiment_act[ind][3]
-    action[16] = experiment_act[ind][13]
-    action[17] = experiment_act[ind][14]
-    action[13] = experiment_act[ind][9]
-    # print(action)
-    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size())
-    action += random_process.sample()
-    action = np.clip(action,0,1)
-    return action
+
 
 def mean_q(y_true, y_pred):
     return K.mean(K.max(y_pred, axis=-1))
@@ -104,6 +90,23 @@ class DDPGAgent_Chang(Agent):
     @property
     def uses_learning_phase(self):
         return self.actor.uses_learning_phase or self.critic.uses_learning_phase
+
+    def initialSample_action_new(self,experiment_act):
+        # c = list(range(0, 256))
+        action = [0]*19
+        ind = np.asscalar(np.random.choice(len(experiment_act),1))
+        # print(ind)
+        action[0] = experiment_act[ind][6]
+        action[4] = experiment_act[ind][0]
+        action[6] = experiment_act[ind][1]
+        action[7] = experiment_act[ind][3]
+        action[16] = experiment_act[ind][13]
+        action[17] = experiment_act[ind][14]
+        action[13] = experiment_act[ind][9]
+        # print(action)
+        action += self.random_process.sample()
+        action = np.clip(action,0,1)
+        return action
 
     def compile(self, optimizer, metrics=[]):
         metrics += [mean_q]
@@ -376,7 +379,7 @@ class DDPGAgent_Chang(Agent):
 
                     # to start new simulations
                     nb_random_start_steps = 0 if nb_max_start_steps == 0 else np.random.randint(nb_max_start_steps)
-                    action = initialSample_action_new(af_new)
+                    action = self.initialSample_action_new(a_new)
                     observation = env.reset()
                     for _ in range(nb_random_start_steps):
 

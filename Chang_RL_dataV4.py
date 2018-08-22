@@ -212,7 +212,7 @@ if args.train:
 
     print('training')
     init_action =  np.clip(initialSample_action_new(a_new),0,1)
-    agent.train(env,args.steps,init_action)
+    agent.train(env,args.steps)
     # agent.fit(env, nb_steps=nallsteps, visualize=False, verbose=1, nb_max_episode_steps=env.time_limit, log_interval=10000)
     # After training is done, we save the final weights.
 
