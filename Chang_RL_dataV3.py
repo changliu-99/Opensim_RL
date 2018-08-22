@@ -3,7 +3,7 @@ import numpy as np
 import sys
 
 from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Lambda,Flatten, Input, concatenate, Dropout,Convolution2D
+from keras.layers import Dense, BatchNormalization,Activation, Lambda,Flatten, Input, concatenate, Dropout,Convolution2D
 from keras.optimizers import Adam
 
 import numpy as np
@@ -23,6 +23,7 @@ import opensim
 
 from MyModule import DDPGAgent_Chang
 from MyModule import ProstheticsEnv_Chang
+from MyModule import LayerNorm
 import tensorflow as tf
 import pandas as pd
 import os
@@ -105,8 +106,12 @@ def actor_model(num_action,observation_shape):
     actor.add(Dense(64))
     actor.add(Activation('relu'))
     actor.add(Dense(64))
+    # actor.add(BatchNormalization(axis=1,input_shape=64))
+    actor.add(LayerNorm())
     actor.add(Activation('relu'))
     actor.add(Dense(num_action))
+    # actor.add(BatchNormalization(axis=1,input_shape=64))
+    actor.add(LayerNorm())
     actor.add(Activation('tanh'))
     actor.add(Lambda(lambda x: x*0.5+0.5))
     print(actor.summary())
@@ -119,8 +124,10 @@ def critic_model(num_action,observation_shape):
     flattened_observation = Flatten()(observation_input)
     x = concatenate([action_input, flattened_observation])
     x = Dense(128)(x)
+    x = LayerNorm()(x)
     x = Activation('selu')(x)
     x = Dense(64)(x)
+    x = LayerNorm()(x)
     x = Activation('selu')(x)
     x = Dense(1)(x)
     x = Activation('linear')(x)
@@ -266,6 +273,7 @@ if args.train:
             abort = False
 
             observation, reward, done, info = env.step(action.tolist())
+            print(observation[0])
 
             # observation = process_observation(observation)
             # observation = dict_to_list_Chang(observation)
@@ -287,6 +295,10 @@ if args.train:
 
             episode_reward += reward
             episode_real_reward += np.float32(info['original_reward'])
+
+            # print(episode_reward)
+            # print(episode_real_reward)
+
             step_logs = {
                 'action': action,
                 'observation': observation,

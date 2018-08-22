@@ -105,9 +105,11 @@ class DDPGAgent_Chang(Agent):
 
         # Compile target networks. We only use them in feed-forward mode, hence we can pass any
         # optimizer and loss since we never use it anyway.
-        self.target_actor = clone_model(self.actor, self.custom_model_objects)
+        # self.target_actor = clone_model(self.actor, self.custom_model_objects)
+        self.target_actor = self.actor
         self.target_actor.compile(optimizer='sgd', loss='mse')
-        self.target_critic = clone_model(self.critic, self.custom_model_objects)
+        # self.target_critic = clone_model(self.critic, self.custom_model_objects)
+        self.target_critic = self.critic
         self.target_critic.compile(optimizer='sgd', loss='mse')
 
         # We also compile the actor. We never optimize the actor using Keras but instead compute
