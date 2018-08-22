@@ -112,7 +112,7 @@ class ProstheticsEnv_Chang(OsimEnv):
                 obs = self.get_state_desc()
             reward += self.reward()
             info['original_reward'] += self.real_reward()
-            print(info['original_reward'])
+            # print(info['original_reward'])
             if self.is_done():
                 break
         return [ obs, reward, self.is_done(),info ]

@@ -273,7 +273,7 @@ if args.train:
             abort = False
 
             observation, reward, done, info = env.step(action.tolist())
-            print(observation[0])
+            # print(observation[0])
             episode_reward += reward
             episode_real_reward += info['original_reward']
 
