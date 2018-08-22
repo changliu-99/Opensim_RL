@@ -229,7 +229,6 @@ if args.train:
     episode_reward = None
     episode_step = None
     episode_reward_log =[]
-    episode_real_reward =None
 
     head_pos = []
     head_pos_new = []
@@ -243,13 +242,14 @@ if args.train:
                 # callbacks.on_episode_begin(episode)
                 episode_step = np.int16(0)
                 episode_reward = np.float32(0)
+                episode_real_reward = np.float32(0)
                 # observation = env.reset()
 
                 # to start new simulations
                 action = np.clip(initialSample_action_new(a_new),0,1)
                 # add initialize parameters for the models
                 seed = random.randrange(2**32-2)
-                env.change_model(model='2D', prosthetic=True, difficulty=2,seed=seed)
+                env.change_model(model='3D', prosthetic=True, difficulty=2,seed=seed)
                 observation = env.reset()
 
                 observation, reward, done, info = env.step(action)
@@ -267,13 +267,15 @@ if args.train:
             #     action = injectNoise(action)
             # print (action)
             reward = np.float32(0)
-            episode_real_reward = np.float32(0)
+
             accumulated_info = {}
             done = False
             abort = False
 
             observation, reward, done, info = env.step(action.tolist())
             print(observation[0])
+            episode_reward += reward
+            episode_real_reward += info['original_reward']
 
             # observation = process_observation(observation)
             # observation = dict_to_list_Chang(observation)
@@ -293,8 +295,6 @@ if args.train:
             metrics = agent.backward(reward, terminal=done)
             # experience log in agent.backward
 
-            episode_reward += reward
-            episode_real_reward += np.float32(info['original_reward'])
 
             # print(episode_reward)
             # print(episode_real_reward)
