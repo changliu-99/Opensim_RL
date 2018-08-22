@@ -129,7 +129,7 @@ class ProstheticsEnv_Chang(OsimEnv):
         prev_state_desc = self.get_prev_state_desc()
         if not prev_state_desc:
             return 0
-        return self.compute_reward()+self.real_reward()
+        return self.compute_reward()+self.real_reward()*0.5
 
     def compute_reward(self):
         state_desc = self.get_state_desc()
