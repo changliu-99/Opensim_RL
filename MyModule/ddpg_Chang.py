@@ -10,7 +10,7 @@ import keras.optimizers as optimizers
 from rl.core import Agent
 from rl.random import OrnsteinUhlenbeckProcess
 from rl.util import *
-
+import json
 
 def mean_q(y_true, y_pred):
     return K.mean(K.max(y_pred, axis=-1))
@@ -316,3 +316,137 @@ class DDPGAgent_Chang(Agent):
             self.update_target_models_hard()
         # print(metrics)
         return metrics
+
+    def train(self,env,nallsteps,init_action):
+        nb_max_episode_steps = env.time_limit
+        nb_max_start_steps = 20
+        rollout_steps = 20
+
+        log_interval=10000
+        max_steps = nallsteps
+        visualize = False
+        total_reward = 0
+        done = False
+
+        episode = np.int16(0)
+        self.step = np.int16(0)
+        observation = None
+        episode_reward = None
+        episode_step = None
+        episode_reward_log =[]
+
+
+        action_repetition = 1
+        action_noise = False
+        print (self.training)
+        self.training = True
+        try:
+            while self.step < max_steps:
+                if observation is None:  # start of a new episode
+                    # callbacks.on_episode_begin(episode)
+                    episode_step = np.int16(0)
+                    episode_reward = np.float32(0)
+                    episode_real_reward = np.float32(0)
+                    # observation = env.reset()
+
+                    # to start new simulations
+                    nb_random_start_steps = 0 if nb_max_start_steps == 0 else np.random.randint(nb_max_start_steps)
+                    action = init_action
+                    for _ in range(nb_random_start_steps):
+
+                        # add initialize parameters for the models
+                        observation = env.reset()
+                        observation, reward, done, info = env.step_begin(action)
+                        v = np.array(observation).reshape((env.observation_space.shape[0]))
+                        action = self.forward(v)
+
+                        if done:
+                            warnings.warn('Env ended before {} random steps could be performed at the start. You should probably lower the `nb_max_start_steps` parameter.'.format(nb_random_start_steps))
+                            observation = deepcopy(env.reset())
+
+            # print(observation)
+                assert episode_reward is not None
+                assert episode_step is not None
+                assert observation is not None
+                # print('initialization')
+                # This is were all of the work happens. We first perceive and compute the action
+                        # (forward step) and then use the reward to improve (backward step).
+                v = np.array(observation).reshape((env.observation_space.shape[0]))
+                action = self.forward(v)
+                # if action_noise:
+                #     action = injectNoise(action)
+                # print (action)
+                reward = np.float32(0)
+
+                accumulated_info = {}
+                done = False
+                abort = False
+
+                observation, reward, done, info = env.step(action.tolist())
+                # print(observation[0])
+                episode_reward += reward
+                episode_real_reward += info['original_reward']
+                # print(observation[68])
+                # observation = process_observation(observation)
+                # observation = dict_to_list_Chang(observation)
+
+                # v = np.array(observation).reshape((env.observation_space.shape[0]))
+                # for key, value in info.items():
+                #     if not np.isreal(value):
+                #         continue
+                #     if key not in accumulated_info:
+                #         accumulated_info[key] = np.zeros_like(value)
+                #     accumulated_info[key] += value
+
+                if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
+                        # Force a terminal state.
+                    done = True
+
+                metrics = self.backward(reward, terminal=done)
+                # experience log in agent.backward
+                # print(episode_reward)
+                # print(episode_real_reward)
+
+                step_logs = {
+                    'action': action,
+                    'observation': observation,
+                    'reward': reward,
+                    'metrics': metrics,
+                    'episode': episode,
+                    'info': accumulated_info,
+                }
+
+                episode_step += 1
+                self.step += 1
+                # print(env.reward(),'/',max_steps)
+                if done:
+                    # We are in a terminal state but the agent hasn't yet seen it. We therefore
+                    # perform one more forward-backward call and simply ignore the action before
+                    # resetting the environment. We need to pass in `terminal=False` here since
+                    # the *next* state, that is the state of the newly reset environment, is
+                    # always non-terminal by convention.
+
+                    self.forward(v)
+                    self.backward(0., terminal=False)
+                    episode_logs = {
+                    'episode_reward': episode_reward,
+                    'nb_episode_steps': episode_step,
+                    'nb_steps': self.step,
+                    }
+                    print(episode_reward, ' steps=',episode_step,' ',self.step,'/',max_steps)
+                    print(episode_real_reward,'real')
+                    episode_reward_log.append(episode_real_reward)
+                    episode += 1
+                    observation = None
+                    episode_step = None
+                    episode_reward = None
+
+
+        except KeyboardInterrupt:
+            did_abort = True
+            self.save_weights(args.model, overwrite=True)
+
+        log_filename = '/Users/liuchang/test_log.json'
+        with open(log_filename, "w") as write_file:
+            json.dump(episode_reward_log, write_file)
+        # return episode_reward_log

@@ -33,7 +33,12 @@ class ProstheticsEnv_Chang(OsimEnv):
 
     def is_done(self):
         state_desc = self.get_state_desc()
-        return state_desc["body_pos"]["pelvis"][1] < 0.6
+        done = not (state_desc["body_pos"]["pelvis"][1] > 0.6  and
+                    state_desc["body_pos_rot"]["pelvis"][2] < 1.5 and
+                    state_desc["body_pos_rot"]["pelvis"][2] > -1.5)
+        # print(state_desc["body_pos_rot"]["pelvis"][2])
+        # print(done)
+        return done
 
     ## Values in the observation vector
     # y, vx, vy, ax, ay, rz, vrz, arz of pelvis (8 values)
@@ -110,11 +115,30 @@ class ProstheticsEnv_Chang(OsimEnv):
                 obs = self.get_observation()
             else:
                 obs = self.get_state_desc()
-            reward += self.reward()
+            reward += self.reward(action)
             info['original_reward'] += self.real_reward()
             # print(info['original_reward'])
             if self.is_done():
                 break
+        return [ obs, reward, self.is_done(),info ]
+
+    def step_begin(self, action, project = True):
+        action = np.clip(action, 0, 1)
+        reward = 0
+        info = {'original_reward':0}
+
+        self.prev_state_desc = self.get_state_desc()
+        self.osim_model.actuate(action)
+        self.osim_model.integrate()
+
+        if project:
+            obs = self.get_observation()
+        else:
+            obs = self.get_state_desc()
+        reward += self.reward(action)
+        info['original_reward'] += self.real_reward()
+            # print(info['original_reward'])
+
         return [ obs, reward, self.is_done(),info ]
 
     def get_observation_space_size(self):
@@ -124,19 +148,20 @@ class ProstheticsEnv_Chang(OsimEnv):
             # return 158
         return 167
 
-    def reward(self):
+    def reward(self,action):
         # state_desc = self.get_state_desc()
         prev_state_desc = self.get_prev_state_desc()
         if not prev_state_desc:
             return 0
-        return self.compute_reward()+self.real_reward()*0.5
+        return self.compute_reward(action)+self.real_reward()*0.5
 
-    def compute_reward(self):
+    def compute_reward(self,action):
         state_desc = self.get_state_desc()
         prev_state_desc = self.get_prev_state_desc()
         # reward_hack = state_desc["body_pos"]["pelvis"][0] * 0.1 #to move in space
         reward_hack = 0
-        reward_hack += 0.01  # small reward for still standing
+        reward_hack += 0.2  # small reward for being alive
+        reward_hack -= 1e-3 * np.square(action).sum()
         # reward_hack += min(0, state_desc["body_pos"]["head"][0] - state_desc["body_pos"]["pelvis"][0]) * 0.2  # penalty for head behind pelvis
         # reward_hack -= sum([max(0.0, k - 0.1) for k in [self.state_desc[""], self.current_state[10]]]) * 0.02  # penalty for straight legs
         # reward_hack -= abs(state_desc["body_acc"]["pelvis"][0])*0.1
