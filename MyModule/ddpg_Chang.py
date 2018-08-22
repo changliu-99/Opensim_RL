@@ -372,6 +372,7 @@ class DDPGAgent_Chang(Agent):
             while self.step < max_steps:
                 if observation is None:  # start of a new episode
                     # callbacks.on_episode_begin(episode)
+                    self.reset_states()
                     episode_step = np.int16(0)
                     episode_reward = np.float32(0)
                     episode_real_reward = np.float32(0)
