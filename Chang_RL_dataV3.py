@@ -108,7 +108,7 @@ def actor_model(num_action,observation_shape):
     actor.add(Activation('relu'))
     actor.add(Dense(num_action))
     actor.add(Activation('tanh'))
-    actor.add(Lambda(lambda x: x *0.5+0.5))
+    actor.add(Lambda(lambda x: x*0.5+0.5))
     print(actor.summary())
     return actor
 ##
@@ -256,9 +256,9 @@ if args.train:
                     # (forward step) and then use the reward to improve (backward step).
             v = np.array(observation).reshape((env.observation_space.shape[0]))
             action = agent.forward(v)
-            if action_noise:
-                action = injectNoise(action)
-
+            # if action_noise:
+            #     action = injectNoise(action)
+            print (action)  
             reward = np.float32(0)
             episode_real_reward = np.float32(0)
             accumulated_info = {}
@@ -266,7 +266,7 @@ if args.train:
             abort = False
 
             observation, reward, done, info = env.step(action.tolist())
-            print (reward)
+
             # observation = process_observation(observation)
             # observation = dict_to_list_Chang(observation)
 

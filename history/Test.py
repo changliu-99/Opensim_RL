@@ -14,7 +14,8 @@ observation = env.reset()
 #         return self.action
 
 for i in range(100):
-    observation, reward, done, info = env.step(env.action_space.sample(), project = False)
+    action = [0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    observation, reward, done, info = env.step(action, project = False)
     print(observation['body_pos']['pelvis'])
     print(env.get_state_desc()['body_pos']['pelvis'])
 

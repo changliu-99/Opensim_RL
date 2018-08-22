@@ -128,7 +128,7 @@ class ProstheticsEnv_Chang(OsimEnv):
         prev_state_desc = self.get_prev_state_desc()
         if not prev_state_desc:
             return 0
-        return self.compute_reward()+self.real_reward()
+        return self.compute_reward()+self.real_reward()*0.2
 
     def compute_reward(self):
         state_desc = self.get_state_desc()
@@ -139,7 +139,7 @@ class ProstheticsEnv_Chang(OsimEnv):
         reward_hack += min(0, state_desc["body_pos"]["head"][0] - state_desc["body_pos"]["pelvis"][0]) * 0.5  # penalty for head behind pelvis
         # reward_hack -= sum([max(0.0, k - 0.1) for k in [self.state_desc[""], self.current_state[10]]]) * 0.02  # penalty for straight legs
         # reward_hack -= abs(state_desc["body_acc"]["pelvis"][0])*0.1
-        reward_hack += 10*min(0,state_desc["body_pos"]["pelvis"][1]-0.8) #penalty for fall
+        reward_hack += min(0,state_desc["body_pos"]["pelvis"][1]-0.8) #penalty for fall
         return reward_hack
 
     def real_reward(self):
