@@ -258,7 +258,7 @@ if args.train:
             action = agent.forward(v)
             # if action_noise:
             #     action = injectNoise(action)
-            print (action)  
+            # print (action)
             reward = np.float32(0)
             episode_real_reward = np.float32(0)
             accumulated_info = {}
