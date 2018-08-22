@@ -100,6 +100,7 @@ class ProstheticsEnv_Chang(OsimEnv):
     def step(self, action, project = True, skip_frame=5):
         action = np.clip(action, 0, 1)
         reward = 0
+        info = {'original_reward':0}
         for _ in range(skip_frame):
             self.prev_state_desc = self.get_state_desc()
             self.osim_model.actuate(action)
@@ -110,9 +111,10 @@ class ProstheticsEnv_Chang(OsimEnv):
             else:
                 obs = self.get_state_desc()
             reward += self.reward()
+            info['original_reward'] += self.real_reward()
             if self.is_done():
                 break
-        return [ obs, reward, self.is_done(),{} ]
+        return [ obs, reward, self.is_done(),info ]
 
     def get_observation_space_size(self):
         if self.prosthetic == True:
@@ -122,7 +124,7 @@ class ProstheticsEnv_Chang(OsimEnv):
         return 167
 
     def reward(self):
-        state_desc = self.get_state_desc()
+        # state_desc = self.get_state_desc()
         prev_state_desc = self.get_prev_state_desc()
         if not prev_state_desc:
             return 0
@@ -133,10 +135,11 @@ class ProstheticsEnv_Chang(OsimEnv):
         prev_state_desc = self.get_prev_state_desc()
         # reward_hack = state_desc["body_pos"]["pelvis"][0] * 0.1 #to move in space
         reward_hack = 0
-        reward_hack += 0.01  # small reward for still standing
+        reward_hack += 0.1  # small reward for still standing
         reward_hack += min(0, state_desc["body_pos"]["head"][0] - state_desc["body_pos"]["pelvis"][0]) * 0.5  # penalty for head behind pelvis
         # reward_hack -= sum([max(0.0, k - 0.1) for k in [self.state_desc[""], self.current_state[10]]]) * 0.02  # penalty for straight legs
         # reward_hack -= abs(state_desc["body_acc"]["pelvis"][0])*0.1
+        reward_hack += 10*min(0,state_desc["body_pos"]["pelvis"][1]-0.8) #penalty for fall
         return reward_hack
 
     def real_reward(self):

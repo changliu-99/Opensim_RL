@@ -3,7 +3,7 @@ import numpy as np
 import sys
 
 from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Flatten, Input, concatenate, Dropout,Convolution2D
+from keras.layers import Dense, Activation, Lambda,Flatten, Input, concatenate, Dropout,Convolution2D
 from keras.optimizers import Adam
 
 import numpy as np
@@ -108,6 +108,7 @@ def actor_model(num_action,observation_shape):
     actor.add(Activation('relu'))
     actor.add(Dense(num_action))
     actor.add(Activation('tanh'))
+    actor.add(Lambda(lambda x: x *0.5+0.5))
     print(actor.summary())
     return actor
 ##
@@ -187,9 +188,7 @@ def injectNoise(action):
     return action
 
 env = ProstheticsEnv_Chang(args.visualize,skip_frame=3)
-env.change_model(model='3D', prosthetic=True, difficulty=2,seed=None)
 
-observation = env.reset() #keep as dictionary format
 nb_actions = env.action_space.shape[0]
 observation_shape = env.observation_space.shape
 
@@ -223,6 +222,7 @@ if args.train:
     episode_reward = None
     episode_step = None
     episode_reward_log =[]
+    episode_real_reward =None
 
     head_pos = []
     head_pos_new = []
@@ -239,7 +239,7 @@ if args.train:
                 # observation = env.reset()
 
                 # to start new simulations
-                action = initialSample_action_new(a_new)
+                action = np.clip(initialSample_action_new(a_new),0,1)
                 # add initialize parameters for the models
                 seed = random.randrange(2**32-2)
                 env.change_model(model='2D', prosthetic=True, difficulty=2,seed=seed)
@@ -260,6 +260,7 @@ if args.train:
                 action = injectNoise(action)
 
             reward = np.float32(0)
+            episode_real_reward = np.float32(0)
             accumulated_info = {}
             done = False
             abort = False
@@ -270,12 +271,12 @@ if args.train:
             # observation = dict_to_list_Chang(observation)
 
             # v = np.array(observation).reshape((env.observation_space.shape[0]))
-            for key, value in info.items():
-                if not np.isreal(value):
-                    continue
-                if key not in accumulated_info:
-                    accumulated_info[key] = np.zeros_like(value)
-                accumulated_info[key] += value
+            # for key, value in info.items():
+            #     if not np.isreal(value):
+            #         continue
+            #     if key not in accumulated_info:
+            #         accumulated_info[key] = np.zeros_like(value)
+            #     accumulated_info[key] += value
 
             if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
                     # Force a terminal state.
@@ -285,7 +286,7 @@ if args.train:
             # experience log in agent.backward
 
             episode_reward += reward
-
+            episode_real_reward += np.float32(info['original_reward'])
             step_logs = {
                 'action': action,
                 'observation': observation,
@@ -313,7 +314,8 @@ if args.train:
                 'nb_steps': agent.step,
                 }
                 print(episode_reward, ' steps=',episode_step,' ',agent.step,'/',max_steps)
-                episode_reward_log.append(episode_reward)
+                print(episode_real_reward,'real')
+                episode_reward_log.append(episode_real_reward)
                 episode += 1
                 observation = None
                 episode_step = None
