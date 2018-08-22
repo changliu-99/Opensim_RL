@@ -187,12 +187,12 @@ def injectNoise(action):
     return action
 
 env = ProstheticsEnv_Chang(args.visualize,skip_frame=3)
-observation = env.reset(project = False) #keep as dictionary format
-# print(observation)
+env.change_model(model='3D', prosthetic=True, difficulty=2,seed=None)
+
+observation = env.reset() #keep as dictionary format
 nb_actions = env.action_space.shape[0]
 observation_shape = env.observation_space.shape
-# print(env.observation_space)
-# print (observation_shape)
+
 agent = build_agent(nb_actions,observation_shape)
 # Total number of steps in training
 nallsteps = args.steps
@@ -236,11 +236,15 @@ if args.train:
                 # callbacks.on_episode_begin(episode)
                 episode_step = np.int16(0)
                 episode_reward = np.float32(0)
-                seed = random.randrange(2**32-2)
-                observation = env.reset(seed=seed)
+                # observation = env.reset()
+
                 # to start new simulations
                 action = initialSample_action_new(a_new)
                 # add initialize parameters for the models
+                seed = random.randrange(2**32-2)
+                env.change_model(model='2D', prosthetic=True, difficulty=2,seed=seed)
+                observation = env.reset()
+
                 observation, reward, done, info = env.step(action)
 
         # print(observation)
@@ -336,7 +340,7 @@ if args.test:
     total_reward = 0
     total_real_reward = 0
     # Create environment
-    env = ProstheticsEnv_Chang(args.visualize,skip_frame=1)
+    env = ProstheticsEnv_Chang(args.visualize,skip_frame=3)
 
     # print(observation)
     observation = env.reset()
