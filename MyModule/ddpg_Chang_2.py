@@ -439,7 +439,7 @@ class DDPGAgent_Chang_2(Agent):
                     action = np.clip(action,0,1)
                     observation = env.reset()
                     v = np.array(observation).reshape((env.observation_space.shape[0]))
-                    states_buffer.append(v)
+                    states_buffer.append([v])
                     action_buffer.append(action)
 
                     for _ in range(rollout_steps):
@@ -450,7 +450,7 @@ class DDPGAgent_Chang_2(Agent):
                         observation, reward, done, info = env.step_begin(action)
                         self.memory.append(self.recent_observation, self.recent_action, reward, terminal=done,
                                            training=self.training)
-
+                        self.step += 1
                         if done:
                             warnings.warn('Env ended before {} random steps could be performed at the start. You should probably lower the `nb_max_start_steps` parameter.'.format(nb_random_start_steps))
                             # observation = deepcopy(env.reset())

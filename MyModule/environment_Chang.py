@@ -16,7 +16,7 @@ class ProstheticsEnv_Chang(OsimEnv):
 
     time_limit = 300
 
-    def __init__(self, visualize = True, integrator_accuracy = 5e-5*2,skip_frame=5):
+    def __init__(self, visualize = True, integrator_accuracy = 5e-5*2,skip_frame=1):
         self.model_paths = {}
         self.model_paths["3D_pros"] = os.path.join(os.path.dirname(__file__), '../models/gait14dof22musc_pros_20180507.osim')
         self.model_paths["3D"] = os.path.join(os.path.dirname(__file__), '../models/gait14dof22musc_20170320.osim')
@@ -102,11 +102,11 @@ class ProstheticsEnv_Chang(OsimEnv):
 
         return res
 
-    def step(self, action, project = True, skip_frame=5):
+    def step(self, action, project = True):
         action = np.clip(action, 0, 1)
         reward = 0
         info = {'original_reward':0}
-        for _ in range(skip_frame):
+        for _ in range(self.skip_frame):
             self.prev_state_desc = self.get_state_desc()
             self.osim_model.actuate(action)
             self.osim_model.integrate()
