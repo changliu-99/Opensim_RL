@@ -21,7 +21,7 @@ import argparse
 import math
 import opensim
 
-from MyModule import DDPGAgent_Chang
+from MyModule import DDPGAgent_Chang_2
 from MyModule import ProstheticsEnv_Chang
 from MyModule import LayerNorm
 import tensorflow as tf
@@ -138,13 +138,13 @@ def critic_model(num_action,observation_shape):
 # Set up the agent for training
 def build_agent(num_action,observation_shape):
     memory = SequentialMemory(limit=1000000, window_length=1)
-    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size())
+    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size(),sigma_min=0.05,n_steps_annealing=1e6)
     actor = actor_model(num_action,observation_shape)
     critic,critic_action_input = critic_model(num_action,observation_shape)
-    agent = DDPGAgent_Chang(nb_actions=num_action, actor=actor, critic=critic, critic_action_input=critic_action_input,
+    agent = DDPGAgent_Chang_2(nb_actions=num_action, actor=actor, critic=critic, critic_action_input=critic_action_input,
                   memory=memory, memory_interval=1,nb_steps_warmup_critic=50, nb_steps_warmup_actor=50,
                   batch_size = 64,random_process=random_process, gamma=.995, target_model_update=1e-3,
-                  delta_clip=1.)
+                  delta_clip=1.,param_noise=True)
 
     return agent
 # agent = ContinuousDQNAgent(nb_actions=env.noutput, V_model=V_model, L_model=L_model, mu_model=mu_model,
@@ -230,7 +230,7 @@ if args.test:
     total_reward = 0
     total_real_reward = 0
     # Create environment
-    env = ProstheticsEnv_Chang(args.visualize,skip_frame=3)
+    env = ProstheticsEnv_Chang(args.visualize,skip_frame=1)
 
     # print(observation)
     observation = env.reset()

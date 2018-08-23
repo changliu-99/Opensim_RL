@@ -1,120 +1,295 @@
-import argparse
-import os
+# Derived from keras-rl
+import numpy as np
+import sys
 
-from keras import backend as K
-from keras.initializers import RandomUniform
-from keras.layers import Dense, Flatten, Input, concatenate, Lambda
 from keras.models import Sequential, Model
+from keras.layers import Dense, BatchNormalization,Activation, Lambda,Flatten, Input, concatenate, Dropout,Convolution2D
 from keras.optimizers import Adam
-from osim.env import RunEnv
-from osim.http.client import Client
+
+import numpy as np
+import json
 from rl.agents import DDPGAgent
 from rl.memory import SequentialMemory
 from rl.random import OrnsteinUhlenbeckProcess
 
-import summarize
+from osim.env import *
+from osim.http.client import Client
+
+from keras.optimizers import RMSprop
+
+import argparse
+import math
+import opensim
+
+from MyModule import DDPGAgent_Chang
+from MyModule import ProstheticsEnv_Chang
+from MyModule import LayerNorm
+import tensorflow as tf
+import pandas as pd
+import os
+##
+current_path = os.path.dirname(os.path.realpath(__file__))
+path = os.path.join(current_path,"action.csv")
+print(path)
+label=['abd_l','abd_r','add_l','add_r','bifemsh_l','bifemsh_r','gastroc_l',
+    'glut_max_l','glut_max_r','hamstrings_l','hamstrings_r','iliopsoas_l',
+    'iliopsoas_r','rect_fem_l','rect_fem_r','soleus_l','tib_ant_l','vasti_l',
+    'vasti_r'];
+actionData=pd.read_csv(path,names=label,header=0)
+# rect_fem_l = actionData['rect_fem_l'].tolist()
+# soleus_l = actionData['soleus_l'].tolist()
+# tib_ant_l = actionData['tib_ant_l'].tolist()
+# hamstrings_l = actionData['hamstrings_l'].tolist()
+af = actionData.fillna(0)
+a = af.values.tolist()
+
+### add another file
+current_path = os.path.dirname(os.path.realpath(__file__))
+path = os.path.join(current_path,"action_new.csv")
+actionData_new=pd.read_csv(path,header=1)
+label_new = ['bifemsh_l','gastroc_l','gastrocM_l','glut_max1_l','glut_max2_l',
+    'glut_max3_l','glmed1','glmed2','glmed3','rect_fem_l','semimem_l','semiten_','soleus_r',
+    'tibant_l','vaslat','vasmed_l']
+af_new = actionData_new.fillna(0)
+a_new = af_new.values.tolist()
+
+env = ProstheticsEnv(visualize=True)
+observation = env.reset()
+
+# from MyModule import *
+# check if use gpu
+sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+
+# from MyModule import *
 
 parser = argparse.ArgumentParser(description='Train or test neural net motor controller')
 parser.add_argument('--train', dest='train', action='store_true', default=False)
-parser.add_argument('--test', dest='test', action='store_true', default=False)
-parser.add_argument('--submit', dest='submit', action='store_true', default=False)
-parser.add_argument('--steps', dest='steps', action='store', default=500000, type=int)
-parser.add_argument('--vis', dest='visualize', action='store_true', default=False)
-parser.add_argument('--model', dest='model', action='store', default="default")
+parser.add_argument('--test', dest='test', action='store_false', default=True)
+parser.add_argument('--steps', dest='steps', action='store', default=50000, type=int) #should be 100000
+parser.add_argument('--visualize', dest='visualize', action='store_true', default=False)
+parser.add_argument('--model', dest='model', action='store', default="example.h5f")
+parser.add_argument('--token', dest='token', action='store', required=False)
+parser.add_argument('--resume', dest='resume', action='store_true', default=False)
 args = parser.parse_args()
 
-if not (args.train or args.test or args.submit):
-    print('No action given, use --train, --test or --submit')
-    exit(0)
+# Load walking environment
 
-env = (args.visualize)
+# Create networks for DDPG
+# Next, we build a very simple model.
+step_size = 0.01
+left_muscleIndex = np.array([1,3,5,7,8, 10, 12, 14, 16, 17, 18])
+left_muscleIndex = left_muscleIndex-1
+right_muscleIndex = np.array([2,4,6,9,11,13,15])
+right_muscleIndex = right_muscleIndex-1
+
+def initialSample_action(action,experiment_act):
+    ind = random.sample(c = list(range(0, 256)))
+    action[9,13,15,16] = experiment_act[ind][9,13,15,16]
+
+def process_observation(obs): #attempt to correct for the pelvis position
+    # print(obs)
+    for i in obs['body_pos']:
+        if i != 'pelvis':
+            # obs['body_pos'][i][0] = obs['body_pos'][i][0] - obs['body_pos']['pelvis'][0]
+            obs['body_pos'][i][2] = obs['body_pos'][i][2] - obs['body_pos']['pelvis'][2]
+    # obs['joint_pos']['back'][0] = obs['joint_pos']['back'][0] - obs['joint_pos']['ground_pelvis'][0]
+    # obs['joint_pos']['back'][0] = obs['joint_pos']['back'][0] - obs['joint_pos']['ground_pelvis'][0]
+    return obs
+
+# wrap agent and critic
+def actor_model(num_action,observation_shape):
+    actor = Sequential()
+#    actor.add(Flatten(input_shape=(1,) + env.observation_space.shape))
+    # actor.add(Lambda())
+    # actor.add(Convolution2D(64, 4, 4, subsample=(4,4),init=lambda shape, name: normal(shape, scale=0.01, name=name), border_mode='same'))
+    actor.add(Flatten(input_shape=(1,) + observation_shape))
+    actor.add(Dense(64))
+    actor.add(Activation('relu'))
+    actor.add(Dense(64))
+    # actor.add(BatchNormalization(axis=1,input_shape=64))
+    actor.add(LayerNorm())
+    actor.add(Activation('relu'))
+    actor.add(Dense(num_action))
+    # actor.add(BatchNormalization(axis=1,input_shape=64))
+    actor.add(LayerNorm())
+    actor.add(Activation('tanh'))
+    actor.add(Lambda(lambda x: x*0.5+0.5))
+    print(actor.summary())
+    print(actor.get_weights())
+    return actor
+##
+def critic_model(num_action,observation_shape):
+    action_input = Input(shape=(num_action,), name='action_input')
+    #observation_input = Input(shape=(1,) + env.observation_space.shape, name='observation_input')
+    observation_input = Input(shape=(1,) + observation_shape, name='observation_input')
+    flattened_observation = Flatten()(observation_input)
+    x = concatenate([action_input, flattened_observation])
+    x = Dense(128)(x)
+    x = LayerNorm()(x)
+    x = Activation('selu')(x)
+    x = Dense(64)(x)
+    x = LayerNorm()(x)
+    x = Activation('selu')(x)
+    x = Dense(1)(x)
+    x = Activation('linear')(x)
+    critic = Model(inputs=[action_input, observation_input], outputs=x)
+    print(critic.summary())
+    return critic, action_input
+# Set up the agent for training
+def build_agent(num_action,observation_shape):
+    memory = SequentialMemory(limit=1000000, window_length=1)
+    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size())
+    actor = actor_model(num_action,observation_shape)
+    critic,critic_action_input = critic_model(num_action,observation_shape)
+    agent = DDPGAgent_Chang(nb_actions=num_action, actor=actor, critic=critic, critic_action_input=critic_action_input,
+                  memory=memory, memory_interval=1,nb_steps_warmup_critic=50, nb_steps_warmup_actor=50,
+                  batch_size = 64,random_process=random_process, gamma=.995, target_model_update=1e-3,
+                  delta_clip=1.)
+
+    return agent
+# agent = ContinuousDQNAgent(nb_actions=env.noutput, V_model=V_model, L_model=L_model, mu_model=mu_model,
+#                            memory=memory, nb_steps_warmup=1000, random_process=random_process,
+#                            gamma=.99, target_model_update=0.1)
+
+# Okay, now it's time to learn something! We visualize the training here for show, but this
+# slows down training quite a lot. You can always safely abort the training prematurely using
+# Ctrl + C.
+
+# def experimentData_train():
+
+#function to convert state_desc to list (https://www.endtoend.ai/blog/ai-for-prosthetics-3/)
+
+def initialSample_action(experiment_act):
+    # c = list(range(0, 256))
+    action = [0]*19
+    ind = np.asscalar(np.random.choice(len(experiment_act),1))
+    # print(ind)
+    action[9] = experiment_act[ind][9]
+    action[13] = experiment_act[ind][13]
+    action[15] = experiment_act[ind][15]
+    action[16] = experiment_act[ind][16]
+    # print(action)
+    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size())
+    action += random_process.sample()
+    return action
+
+def initialSample_action_new(experiment_act):
+    # c = list(range(0, 256))
+    action = [0]*19
+    ind = np.asscalar(np.random.choice(len(experiment_act),1))
+    # print(ind)
+    action[0] = experiment_act[ind][6]
+    action[4] = experiment_act[ind][0]
+    action[6] = experiment_act[ind][1]
+    action[7] = experiment_act[ind][3]
+    action[16] = experiment_act[ind][13]
+    action[17] = experiment_act[ind][14]
+    action[13] = experiment_act[ind][9]
+    # print(action)
+    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size())
+    action += random_process.sample()
+    return action
+
+def injectNoise(action):
+    random_process = OrnsteinUhlenbeckProcess(theta=.1, mu=0., sigma=.02, size=env.get_action_space_size())
+    action += random_process.sample()
+    return action
+
+env = ProstheticsEnv_Chang(args.visualize,skip_frame=3)
 
 nb_actions = env.action_space.shape[0]
+observation_shape = env.observation_space.shape
 
+agent = build_agent(nb_actions,observation_shape)
+# Total number of steps in training
 nallsteps = args.steps
-
-def preprocess(x):
-    return K.concatenate([
-        x[:,:,0:1] / 360.0,
-        x[:,:,1:3],
-        x[:,:,3:4] / 360.0,
-        x[:,:,4:6],
-        x[:,:,6:18] / 360.0,
-        x[:,:,18:19] - x[:,:,1:2],
-        x[:,:,19:22],
-        x[:,:,28:29] - x[:,:,1:2],
-        x[:,:,29:30],
-        x[:, :, 30:31] - x[:, :, 1:2],
-        x[:, :, 31:32],
-        x[:, :, 32:33] - x[:, :, 1:2],
-        x[:, :, 33:34],
-        x[:, :, 34:35] - x[:, :, 1:2],
-        x[:, :, 35:41],
-    ], axis=2)
-
-preprocess_layer = Lambda(preprocess, input_shape=(1,) + env.observation_space.shape, output_shape=(35,))
-init = RandomUniform(-0.003, 0.003)
-
-actor = Sequential()
-actor.add(preprocess_layer)
-actor.add(Dense(64, activation=K.tanh, kernel_initializer=init))
-#actor.add(BatchNormalization(axis=1))
-#actor.add(Dropout(.25))
-actor.add(Dense(64, activation=K.tanh, kernel_initializer=init))
-actor.add(Dense(nb_actions, activation=K.sigmoid))
-
-print(actor.summary())
-
-action_input = Input(shape=(nb_actions,), name='action_input')
-observation_input = Input(shape=(1,) + env.observation_space.shape, name='observation_input')
-reduced_input = preprocess_layer(observation_input)
-flattened_observation = Flatten()(reduced_input)
-x = concatenate([action_input, flattened_observation])
-x = Dense(64, activation=K.tanh, kernel_initializer=init)(x)
-#x = Dropout(.25)(x)
-x = Dense(64, activation=K.tanh, kernel_initializer=init)(x)
-x = Dense(1)(x)
-critic = Model(inputs=[action_input, observation_input], outputs=x)
-
-print(critic.summary())
-
-memory = SequentialMemory(limit=1000000, window_length=1)
-random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.noutput)
-agent = DDPGAgent(nb_actions=nb_actions, actor=actor, critic=critic, critic_action_input=action_input,
-                  memory=memory, random_process=random_process, gamma=.99, target_model_update=1e-3,
-                  delta_clip=1., batch_size=64)
 agent.compile(Adam(lr=.001, clipnorm=1.), metrics=['mae'])
 
 if args.train:
-    if os.path.exists(args.model + '_actor'):
-        print('Loaded model ' + args.model)
+    # TODO: warp this training as function
+    if args.resume:
         agent.load_weights(args.model)
-    keras_history = agent.fit(env, nb_steps=nallsteps, verbose=2, nb_max_episode_steps=1000)
+        print('resume')
 
-    print('Saving model ' + args.model)
+    print('training')
+    init_action =  np.clip(initialSample_action_new(a_new),0,1)
+    agent.train(env,args.steps)
+    # agent.fit(env, nb_steps=nallsteps, visualize=False, verbose=1, nb_max_episode_steps=env.time_limit, log_interval=10000)
+    # After training is done, we save the final weights.
+
+    # implement my own fit
     agent.save_weights(args.model, overwrite=True)
-    print('Saved model ' + args.model)
-
-    with open(args.model + '_history', 'w') as f:
-        f.write(str(keras_history.history))
-    summarize.plot_diagrams(keras_history.history, args.model)
-
+    print ('done training')
+# If TEST and TOKEN, submit to csrowdAI
 if args.test:
+    visualize = True
+    print('test')
     agent.load_weights(args.model)
-    agent.test(env, nb_episodes=1, nb_max_episode_steps=env.timestep_limit)
+    # Settings
 
-if args.submit:
+    total_reward = 0
+    total_real_reward = 0
+    # Create environment
+    env = ProstheticsEnv_Chang(args.visualize,skip_frame=3)
+
+    # print(observation)
+    observation = env.reset()
+    # print(observation)
+    # project_observation = dict_to_list_Chang(observation)
+    # print(project_observation)
+    # agent.test(env, nb_episodes=3, visualize=False, nb_max_episode_steps=1000)
+
+    # Run a single step
+    # The grader runs 3 simulations of at most 1000 steps each. We stop after the last one
+    # agent.test(env, nb_episodes=10, visualize=False, nb_max_episode_steps=500)
+    state_buffer=[]
+    for i in range(5):
+        v = np.array(observation).reshape((env.observation_space.shape[0]))
+        action = agent.forward(v)
+        [observation, reward, done, info] = env.step(action.tolist())
+        # observation = process_observation(observation)
+        # project to np.array
+        # project_observation = dict_to_list_Chang(observation)
+        state_buffer.append([v])
+        real_reward = env.real_reward()
+        total_reward += reward
+        total_real_reward += real_reward
+
+        if observation[0] < 0.6:
+            break
+
+    print(total_reward)
+    print(total_real_reward)
+
+        # if done:
+        #     observation = env.reset()
+            # if not observation:
+            #     break
+
+    # client.submit()
+
+# If TEST and no TOKEN, run some test experiments
+if args.token:
     agent.load_weights(args.model)
     remote_base = 'http://grader.crowdai.org:1729'
-    token = '688545d8ba985c174b4f967b40924a43'
     client = Client(remote_base)
-    observation = client.env_create(token)
+
+    # Create environment
+    observation = client.env_create(args.token)
+
+    # Run a single step
     # The grader runs 3 simulations of at most 1000 steps each. We stop after the last one
     while True:
-        [observation, reward, done, info] = client.env_step(agent.forward(observation).tolist())
-        print(observation)
+        v = np.array(observation).reshape((env.observation_space.shape[0]))
+        action = agent.forward(v)
+        [observation, reward, done, info] = client.env_step(action.tolist())
+        observation = process_observation(observation)
+        total_reward += reward
         if done:
             observation = client.env_reset()
             if not observation:
                 break
-    # client.submit()
+
+    client.submit()
+    # Finally, evaluate our algorithm for 1 episode.
+    #
