@@ -271,10 +271,17 @@ class DDPGAgent_Chang_2(Agent):
         assert action.shape == (self.nb_actions,)
 
         # Apply noise, if a random process is set.
-        if self.training and self.random_process is not None:
-            noise = self.random_process.sample()
-            assert noise.shape == action.shape
-            action += noise
+        if self.random_process is not None:
+            if self.rollout:
+                noise = self.random_process.sample()
+                assert noise.shape == action.shape
+                action += noise
+                # print('noise')
+            elif self.action_noise:
+                noise = self.random_process.sample()
+                assert noise.shape == action.shape
+                action += noise
+                # print('noise')
 
         return action
 
@@ -411,6 +418,8 @@ class DDPGAgent_Chang_2(Agent):
         # create buffer to store action and observations
         states_buffer = []
         action_buffer = []
+        self.action_noise = False
+        self.rollout = False
         print (self.training)
         self.training = True
         try:
@@ -425,15 +434,15 @@ class DDPGAgent_Chang_2(Agent):
 
                     # to start new simulations
                     # nb_random_start_steps = 0 if nb_max_start_steps == 0 else np.random.randint(nb_max_start_steps)
-                    # action = self.initialSample_action_new(a_new)
-                    action = env.action_space.sample()
+                    action = self.initialSample_action_new(a_new)
+                    # action = env.action_space.sample()
                     action = np.clip(action,0,1)
                     observation = env.reset()
                     # states_buffer.append(v)
                     # action_buffer.append(action)
 
                     for _ in range(rollout_steps):
-
+                        self.rollout = True
                         # add initialize parameters for the models
                         v = np.array(observation).reshape((env.observation_space.shape[0]))
                         observation, reward, done, info = env.step_begin(action)
@@ -441,6 +450,7 @@ class DDPGAgent_Chang_2(Agent):
                         observation, reward, done, info = env.step_begin(action)
                         self.memory.append(self.recent_observation, self.recent_action, reward, terminal=done,
                                            training=self.training)
+
                         if done:
                             warnings.warn('Env ended before {} random steps could be performed at the start. You should probably lower the `nb_max_start_steps` parameter.'.format(nb_random_start_steps))
                             # observation = deepcopy(env.reset())
@@ -449,6 +459,7 @@ class DDPGAgent_Chang_2(Agent):
 
 
             # print(observation)
+                self.rollout = False
                 assert episode_reward is not None
                 assert episode_step is not None
                 assert observation is not None
@@ -524,9 +535,8 @@ class DDPGAgent_Chang_2(Agent):
                     episode_step = None
                     episode_reward = None
 
-
-                    action_noise = np.random.rand() < 1 - param_noise_prob
-                    if not action_noise:
+                    self.action_noise = np.random.rand() < 1 - param_noise_prob
+                    if not self.action_noise:
                         # print(states_np)
                         # print(states_buffer)
                         print('perturb')
