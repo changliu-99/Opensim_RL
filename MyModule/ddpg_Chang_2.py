@@ -445,8 +445,7 @@ class DDPGAgent_Chang_2(Agent):
                             observation = None
                             break
 
-                    states_buffer.append([v])
-                    action_buffer.append(action)
+
             # print(observation)
                 assert episode_reward is not None
                 assert episode_step is not None
@@ -456,8 +455,7 @@ class DDPGAgent_Chang_2(Agent):
                         # (forward step) and then use the reward to improve (backward step).
                 v = np.array(observation).reshape((env.observation_space.shape[0]))
                 action = self.forward(v)
-                states_buffer.append([v])
-                action_buffer.append(action)
+
                 # if action_noise:
                 #     action = injectNoise(action)
                 # print (action)
@@ -503,12 +501,12 @@ class DDPGAgent_Chang_2(Agent):
                     # resetting the environment. We need to pass in `terminal=False` here since
                     # the *next* state, that is the state of the newly reset environment, is
                     # always non-terminal by convention.
-
+                    states_buffer.append([v])
+                    action_buffer.append(action)
                     action = self.forward(v)
                     self.backward(0., terminal=False)
 
-                    states_buffer.append([v])
-                    action_buffer.append(action)
+
                     # states_np = np.asarray(states_buffer,dtype=np.float32)
 
                     episode_logs = {
