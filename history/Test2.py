@@ -251,6 +251,7 @@ if args.test:
         # project to np.array
         # project_observation = dict_to_list_Chang(observation)
         state_buffer.append([v])
+        agent.setup_param_noise()
         real_reward = env.real_reward()
         total_reward += reward
         total_real_reward += real_reward

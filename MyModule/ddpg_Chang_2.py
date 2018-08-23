@@ -424,13 +424,15 @@ class DDPGAgent_Chang_2(Agent):
                     # observation = env.reset()
 
                     # to start new simulations
-                    nb_random_start_steps = 0 if nb_max_start_steps == 0 else np.random.randint(nb_max_start_steps)
-                    action = self.initialSample_action_new(a_new)
+                    # nb_random_start_steps = 0 if nb_max_start_steps == 0 else np.random.randint(nb_max_start_steps)
+                    # action = self.initialSample_action_new(a_new)
+                    action = env.action_space.sample()
+                    action = np.clip(action,0,1)
                     observation = env.reset()
                     # states_buffer.append(v)
                     # action_buffer.append(action)
 
-                    for _ in range(nb_random_start_steps):
+                    for _ in range(rollout_steps):
 
                         # add initialize parameters for the models
                         v = np.array(observation).reshape((env.observation_space.shape[0]))

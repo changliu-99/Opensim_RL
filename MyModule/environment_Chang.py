@@ -153,14 +153,14 @@ class ProstheticsEnv_Chang(OsimEnv):
         prev_state_desc = self.get_prev_state_desc()
         if not prev_state_desc:
             return 0
-        return self.compute_reward(action)+self.real_reward()*0.5
+        return self.compute_reward(action)+self.real_reward()
 
     def compute_reward(self,action):
         state_desc = self.get_state_desc()
         prev_state_desc = self.get_prev_state_desc()
         # reward_hack = state_desc["body_pos"]["pelvis"][0] * 0.1 #to move in space
         reward_hack = 0
-        reward_hack += 0.2  # small reward for being alive
+        reward_hack += 1  # small reward for being alive
         reward_hack -= 1e-3 * np.square(action).sum()
         # reward_hack += min(0, state_desc["body_pos"]["head"][0] - state_desc["body_pos"]["pelvis"][0]) * 0.2  # penalty for head behind pelvis
         # reward_hack -= sum([max(0.0, k - 0.1) for k in [self.state_desc[""], self.current_state[10]]]) * 0.02  # penalty for straight legs
