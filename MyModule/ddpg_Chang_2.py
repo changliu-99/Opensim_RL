@@ -438,14 +438,13 @@ class DDPGAgent_Chang_2(Agent):
                     # action = env.action_space.sample()
                     action = np.clip(action,0,1)
                     observation = env.reset()
-                    # states_buffer.append(v)
-                    # action_buffer.append(action)
+                    states_buffer.append(v)
+                    action_buffer.append(action)
 
                     for _ in range(rollout_steps):
                         self.rollout = True
                         # add initialize parameters for the models
                         v = np.array(observation).reshape((env.observation_space.shape[0]))
-                        observation, reward, done, info = env.step_begin(action)
                         action = self.forward(v)
                         observation, reward, done, info = env.step_begin(action)
                         self.memory.append(self.recent_observation, self.recent_action, reward, terminal=done,
@@ -482,20 +481,14 @@ class DDPGAgent_Chang_2(Agent):
                 # print(observation[0])
                 episode_reward += reward
                 episode_real_reward += info['original_reward']
-                # print(observation[68])
-                # observation = process_observation(observation)
-                # observation = dict_to_list_Chang(observation)
-
-
-                if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:
-                        # Force a terminal state.
+                states_buffer.append([v])
+                action_buffer.append(action)
+                if nb_max_episode_steps and episode_step >= nb_max_episode_steps - 1:                        # Force a terminal state.
                     done = True
-
                 metrics = self.backward(reward, terminal=done)
                 # experience log in agent.backward
                 # print(episode_reward)
                 # print(episode_real_reward)
-
                 step_logs = {
                     'action': action,
                     'observation': observation,
@@ -504,7 +497,6 @@ class DDPGAgent_Chang_2(Agent):
                     'episode': episode,
                     'info': accumulated_info,
                 }
-
                 episode_step += 1
                 self.step += 1
                 # print(env.reward(),'/',max_steps)
@@ -518,10 +510,7 @@ class DDPGAgent_Chang_2(Agent):
                     action_buffer.append(action)
                     action = self.forward(v)
                     self.backward(0., terminal=False)
-
-
                     # states_np = np.asarray(states_buffer,dtype=np.float32)
-
                     episode_logs = {
                     'episode_reward': episode_reward,
                     'nb_episode_steps': episode_step,
@@ -537,8 +526,6 @@ class DDPGAgent_Chang_2(Agent):
 
                     self.action_noise = np.random.rand() < 1 - param_noise_prob
                     if not self.action_noise:
-                        # print(states_np)
-                        # print(states_buffer)
                         print('perturb')
                         self.setup_param_noise(states_buffer, self.random_process.current_sigma)
                     # del states_np

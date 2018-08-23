@@ -195,7 +195,7 @@ def injectNoise(action):
     action += random_process.sample()
     return action
 
-env = ProstheticsEnv_Chang(args.visualize,skip_frame=3)
+env = ProstheticsEnv_Chang(args.visualize,skip_frame=1)
 
 nb_actions = env.action_space.shape[0]
 observation_shape = env.observation_space.shape
