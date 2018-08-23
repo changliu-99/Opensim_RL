@@ -406,7 +406,7 @@ class DDPGAgent_Chang_2(Agent):
         episode_reward_log =[]
 
         action_repetition = 1
-        param_noise_prob = 0.3
+        param_noise_prob = 0.5
 
         # create buffer to store action and observations
         states_buffer = []
