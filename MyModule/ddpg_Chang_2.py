@@ -438,6 +438,7 @@ class DDPGAgent_Chang_2(Agent):
                     # action = env.action_space.sample()
                     action = np.clip(action,0,1)
                     observation = env.reset()
+                    v = np.array(observation).reshape((env.observation_space.shape[0]))
                     states_buffer.append(v)
                     action_buffer.append(action)
 
