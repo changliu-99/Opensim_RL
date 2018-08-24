@@ -54,22 +54,11 @@ class ProstheticsEnv_Chang(ProstheticsEnv):
         res = []
         pelvis = None
 
-        for body_part in ["pelvis", "head","torso","toes_l","pros_foot_r","talus_l","talus_r"]:
+        for body_part in ["pelvis", "head","torso","toes_l","pros_foot_r","talus_l"]:
             # if self.prosthetic and body_part in ["toes_r","talus_r"]:
             #     res += [0] * 9
             #     continue
             # add information about the toe position
-            if self.prosthetic and body_part in ["talus_r"]:
-                res += [0] * 9
-                continue
-            if self.prosthetic and body_part in ["pros_foot_r"]:
-                cur = []
-                cur += state_desc["body_pos"][body_part][0:2]
-                cur_upd = cur
-                cur_upd[:2] = [cur[i] - state_desc["body_pos"]["pelvis"][i] for i in range(2)]
-                res += cur_upd
-                res += [0] * 7
-                continue
             cur = []
             cur += state_desc["body_pos"][body_part][0:2]
             cur += state_desc["body_vel"][body_part][0:2]
@@ -78,13 +67,33 @@ class ProstheticsEnv_Chang(ProstheticsEnv):
             cur += state_desc["body_vel_rot"][body_part][2:]
             cur += state_desc["body_acc_rot"][body_part][2:]
             if body_part == "pelvis":
+
                 pelvis = cur
-                res += cur[1:]
-            else:
+                res += pelvis[1:]
+                continue
+            # if self.prosthetic and body_part in ["talus_r"]:
+            #     cur_upd = [0 - pelvis[i] for i in range(9)]
+            #     res += cur_upd
+            #     continue
+
+            if self.prosthetic and body_part in ["pros_foot_r"]:
+                # cur = []
+                # cur += state_desc["body_pos"][body_part][0:2]
+                # cur_upd = cur
+                # cur_upd[:2] = [cur[i] - state_desc["body_pos"]["pelvis"][i] for i in range(2)]
+                # res += cur_upd
+                # res += [0] * 7
+                cur_upd = cur
+                cur_upd[:9] = [cur[i] - pelvis[i] for i in range(9)]
+                res += cur_upd
+                continue
+
+            if body_part in ["head","torso","toes_l","talus_l"]:
                 cur_upd = cur
                 cur_upd[:9] = [cur[i] - pelvis[i] for i in range(9)]
                 # cur_upd[6:7] = [cur[i] - pelvis[i] for i in range(6,7)]
                 res += cur_upd
+
 
         for joint in ["ankle_l","ankle_r","back","hip_l","hip_r","knee_l","knee_r"]:
             if joint in ["ankle_l","ankle_r","back","knee_l","knee_r"]:
@@ -103,10 +112,10 @@ class ProstheticsEnv_Chang(ProstheticsEnv):
         #     res += [state_desc["muscles"][muscle]["fiber_length"]]
         #     res += [state_desc["muscles"][muscle]["fiber_velocity"]]
         #
-        # cm_pos = [state_desc["misc"]["mass_center_pos"][i] - pelvis[i] for i in range(2)]
-        # cm_vel = [state_desc["misc"]["mass_center_vel"][i] - pelvis[i+3] for i in range(2)]
-        # cm_acc = [state_desc["misc"]["mass_center_acc"][i] - pelvis[i+6] for i in range(2)]
-        # res = res + cm_pos + cm_vel + cm_acc
+        cm_pos = [state_desc["misc"]["mass_center_pos"][i] - pelvis[i] for i in range(2)]
+        cm_vel = [state_desc["misc"]["mass_center_vel"][i] - pelvis[i+3] for i in range(2)]
+        cm_acc = [state_desc["misc"]["mass_center_acc"][i] - pelvis[i+6] for i in range(2)]
+        res = res + cm_pos + cm_vel + cm_acc
 
         return res
 
@@ -152,7 +161,7 @@ class ProstheticsEnv_Chang(ProstheticsEnv):
     def get_observation_space_size(self):
         if self.prosthetic == True:
             #give up all the muscle state and COM
-            return 95
+            return 92
             # return 158
         return 167
 

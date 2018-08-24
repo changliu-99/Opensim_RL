@@ -137,7 +137,8 @@ def critic_model(num_action,observation_shape):
 # Set up the agent for training
 def build_agent(num_action,observation_shape):
     memory = SequentialMemory(limit=1000000, window_length=1)
-    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2, size=env.get_action_space_size(),sigma_min=0.05,n_steps_annealing=1e6)
+    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2,
+    size=env.get_action_space_size(),sigma_min=0.05,n_steps_annealing=10000)
     actor = actor_model(num_action,observation_shape)
     critic,critic_action_input = critic_model(num_action,observation_shape)
     agent = DDPGAgent_Chang_2(nb_actions=num_action, actor=actor, critic=critic, critic_action_input=critic_action_input,
@@ -195,8 +196,8 @@ def injectNoise(action):
     return action
 
 env = ProstheticsEnv_Chang(args.visualize,skip_frame=1)
-# obs = env.reset(project= False)
-# print(obs["joint_pos"]["ankle_l"])
+obs = env.reset(project= False)
+print(obs["body_pos"]["pros_foot_r"])
 
 nb_actions = env.action_space.shape[0]
 observation_shape = env.observation_space.shape
@@ -244,7 +245,8 @@ if args.test:
     # The grader runs 3 simulations of at most 1000 steps each. We stop after the last one
     # agent.test(env, nb_episodes=10, visualize=False, nb_max_episode_steps=500)
     agent.rollout = False
-    agent.action_noise = True
+    agent.action_noise = False
+    agent.random_process.reset_states()
     for i in range(1000):
         v = np.array(observation).reshape((env.observation_space.shape[0]))
         action = agent.forward(v)
