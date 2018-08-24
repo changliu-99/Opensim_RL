@@ -431,11 +431,9 @@ class DDPGAgent_Chang_2(Agent):
                     episode_step = np.int16(0)
                     episode_reward = np.float32(0)
                     episode_real_reward = np.float32(0)
-                    self.reset_states()
+                    self.random_process.reset_states()
                     # observation = env.reset()
-
                     # to start new simulations
-                    # nb_random_start_steps = 0 if nb_max_start_steps == 0 else np.random.randint(nb_max_start_steps)
                     action = self.initialSample_action_new(a_new)
                     # action = env.action_space.sample()
                     action = np.clip(action,0,1)
@@ -458,7 +456,6 @@ class DDPGAgent_Chang_2(Agent):
                             # observation = deepcopy(env.reset())
                             observation = None
                             break
-
 
             # print(observation)
                 self.rollout = False
@@ -543,3 +540,4 @@ class DDPGAgent_Chang_2(Agent):
         with open(log_filename, "w") as write_file:
             json.dump(episode_reward_log, write_file)
         # return episode_reward_log
+        agent.save_weights(args.model, overwrite=True)
