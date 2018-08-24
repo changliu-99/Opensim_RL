@@ -397,7 +397,7 @@ class DDPGAgent_Chang_2(Agent):
     def train(self,env,nallsteps):
         nb_max_episode_steps = env.time_limit
         nb_max_start_steps = 20
-        rollout_steps = 20
+        rollout_steps = 5
 
         log_interval=10000
         max_steps = nallsteps
@@ -447,12 +447,12 @@ class DDPGAgent_Chang_2(Agent):
                         # add initialize parameters for the models
                         v = np.array(observation).reshape((env.observation_space.shape[0]))
                         action = self.forward(v)
-                        observation, reward, done, info = env.step_begin(action)
+                        observation, reward, done, info = env.step(action)
                         self.memory.append(self.recent_observation, self.recent_action, reward, terminal=done,
                                            training=self.training)
                         self.step += 1
                         if done:
-                            warnings.warn('Env ended before {} random steps could be performed at the start. You should probably lower the `nb_max_start_steps` parameter.'.format(nb_random_start_steps))
+                            warnings.warn('Env ended before {} random steps could be performed at the start. You should probably lower the')
                             # observation = deepcopy(env.reset())
                             observation = None
                             break

@@ -53,8 +53,8 @@ label_new = ['bifemsh_l','gastroc_l','gastrocM_l','glut_max1_l','glut_max2_l',
 af_new = actionData_new.fillna(0)
 a_new = af_new.values.tolist()
 
-env = ProstheticsEnv(visualize=True)
-observation = env.reset()
+#env = ProstheticsEnv(visualize=True)
+#observation = env.reset()
 
 # from MyModule import *
 # check if use gpu
@@ -195,7 +195,7 @@ def injectNoise(action):
     action += random_process.sample()
     return action
 
-env = ProstheticsEnv_Chang(args.visualize,skip_frame=1)
+env = ProstheticsEnv_Chang(args.visualize,skip_frame=3)
 
 nb_actions = env.action_space.shape[0]
 observation_shape = env.observation_space.shape
