@@ -196,6 +196,8 @@ def injectNoise(action):
     return action
 
 env = ProstheticsEnv_Chang(args.visualize,skip_frame=3)
+# obs = env.reset(project= False)
+# print(obs["joint_pos"]["ankle_l"])
 
 nb_actions = env.action_space.shape[0]
 observation_shape = env.observation_space.shape

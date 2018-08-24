@@ -7,7 +7,7 @@ import opensim
 import random
 from osim.env import *
 ## ADD by Chang
-class ProstheticsEnv_Chang(OsimEnv):
+class ProstheticsEnv_Chang(ProstheticsEnv):
     # model_path = os.path.join(os.path.dirname(__file__), '..models/gait14dof22musc_pros_20180507.osim'
     prosthetic = True
     model = "3D"
@@ -64,7 +64,6 @@ class ProstheticsEnv_Chang(OsimEnv):
                 continue
             if self.prosthetic and body_part in ["pros_foot_r"]:
                 cur = []
-
                 cur += state_desc["body_pos"][body_part][0:2]
                 cur_upd = cur
                 cur_upd[:2] = [cur[i] - state_desc["body_pos"]["pelvis"][i] for i in range(2)]
@@ -83,22 +82,30 @@ class ProstheticsEnv_Chang(OsimEnv):
                 res += cur[1:]
             else:
                 cur_upd = cur
-                cur_upd[:2] = [cur[i] - pelvis[i] for i in range(2)]
-                cur_upd[6:7] = [cur[i] - pelvis[i] for i in range(6,7)]
+                cur_upd[:7] = [cur[i] - pelvis[i] for i in range(9)]
+                # cur_upd[6:7] = [cur[i] - pelvis[i] for i in range(6,7)]
                 res += cur_upd
 
         for joint in ["ankle_l","ankle_r","back","hip_l","hip_r","knee_l","knee_r"]:
-            res += state_desc["joint_pos"][joint]
-            res += state_desc["joint_vel"][joint]
-            res += state_desc["joint_acc"][joint]
+            if joint in ["ankle_l","ankle_r","back","knee_l","knee_r"]:
+                res += state_desc["joint_pos"][joint][0] - state_desc["joint_pos"]["ground_pelvis"][2]
+                res += state_desc["joint_vel"][joint][0] - state_desc["joint_vel"]["ground_pelvis"][2]
+                res += state_desc["joint_acc"][joint][0] - state_desc["joint_acc"]["ground_pelvis"][2]
+                continue
+            if joint in ["hip_l","hip_r"]:
+                res += state_desc["joint_pos"][joint][0:2] - state_desc["joint_pos"]["ground_pelvis"][0:2]
+                res += state_desc["joint_vel"][joint][0:2] - state_desc["joint_vel"]["ground_pelvis"][0:2]
+                res += state_desc["joint_acc"][joint][0:2] - state_desc["joint_acc"]["ground_pelvis"][0:2]
 
         # for muscle in sorted(state_desc["muscles"].keys()):
         #     res += [state_desc["muscles"][muscle]["activation"]]
         #     res += [state_desc["muscles"][muscle]["fiber_length"]]
         #     res += [state_desc["muscles"][muscle]["fiber_velocity"]]
         #
-        # cm_pos = [state_desc["misc"]["mass_center_pos"][i] - pelvis[i] for i in range(2)]
-        # res = res + cm_pos + state_desc["misc"]["mass_center_vel"] + state_desc["misc"]["mass_center_acc"]
+        cm_pos = [state_desc["misc"]["mass_center_pos"][i] - pelvis[i] for i in range(2)]
+        cm_vel = [state_desc["misc"]["mass_center_vel"][i] - pelvis[i+3] for i in range(2)]
+        cm_acc = [state_desc["misc"]["mass_center_acc"][i] - pelvis[i+6] for i in range(2)]
+        res = res + cm_pos + cm_vel + cm_acc
 
         return res
 
@@ -144,7 +151,7 @@ class ProstheticsEnv_Chang(OsimEnv):
     def get_observation_space_size(self):
         if self.prosthetic == True:
             #give up all the muscle state and COM
-            return 95
+            return 101
             # return 158
         return 167
 
