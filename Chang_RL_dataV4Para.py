@@ -102,7 +102,7 @@ def actor_model(num_action,observation_shape):
     # actor.add(Lambda())
     # actor.add(Convolution2D(64, 4, 4, subsample=(4,4),init=lambda shape, name: normal(shape, scale=0.01, name=name), border_mode='same'))
     actor.add(Flatten(input_shape=(1,) + observation_shape))
-    actor.add(Dense(64))
+    actor.add(Dense(128))
     actor.add(Activation('relu'))
     actor.add(Dense(64))
     # actor.add(BatchNormalization(axis=1,input_shape=64))
@@ -254,7 +254,7 @@ if args.test:
         # observation = process_observation(observation)
         # project to np.array
         # project_observation = dict_to_list_Chang(observation)
-
+        print(observation)
         real_reward = env.real_reward()
         total_reward += reward
         total_real_reward += real_reward
