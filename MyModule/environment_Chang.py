@@ -82,20 +82,21 @@ class ProstheticsEnv_Chang(ProstheticsEnv):
                 res += cur[1:]
             else:
                 cur_upd = cur
-                cur_upd[:7] = [cur[i] - pelvis[i] for i in range(9)]
+                cur_upd[:9] = [cur[i] - pelvis[i] for i in range(9)]
                 # cur_upd[6:7] = [cur[i] - pelvis[i] for i in range(6,7)]
                 res += cur_upd
 
         for joint in ["ankle_l","ankle_r","back","hip_l","hip_r","knee_l","knee_r"]:
             if joint in ["ankle_l","ankle_r","back","knee_l","knee_r"]:
-                res += state_desc["joint_pos"][joint][0] - state_desc["joint_pos"]["ground_pelvis"][2]
-                res += state_desc["joint_vel"][joint][0] - state_desc["joint_vel"]["ground_pelvis"][2]
-                res += state_desc["joint_acc"][joint][0] - state_desc["joint_acc"]["ground_pelvis"][2]
-                continue
+
+                res.append (state_desc["joint_pos"][joint][0] - state_desc["joint_pos"]["ground_pelvis"][2])
+                res.append (state_desc["joint_vel"][joint][0] - state_desc["joint_vel"]["ground_pelvis"][2])
+                res.append (state_desc["joint_acc"][joint][0] - state_desc["joint_acc"]["ground_pelvis"][2])
+
             if joint in ["hip_l","hip_r"]:
-                res += state_desc["joint_pos"][joint][0:2] - state_desc["joint_pos"]["ground_pelvis"][0:2]
-                res += state_desc["joint_vel"][joint][0:2] - state_desc["joint_vel"]["ground_pelvis"][0:2]
-                res += state_desc["joint_acc"][joint][0:2] - state_desc["joint_acc"]["ground_pelvis"][0:2]
+                res += [state_desc["joint_pos"][joint][i] - state_desc["joint_pos"]["ground_pelvis"][i] for i in range(3)]
+                res += [state_desc["joint_vel"][joint][i] - state_desc["joint_vel"]["ground_pelvis"][i] for i in range(3)]
+                res += [state_desc["joint_acc"][joint][i] - state_desc["joint_acc"]["ground_pelvis"][i] for i in range(3)]
 
         # for muscle in sorted(state_desc["muscles"].keys()):
         #     res += [state_desc["muscles"][muscle]["activation"]]
