@@ -540,4 +540,4 @@ class DDPGAgent_Chang_2(Agent):
         with open(log_filename, "w") as write_file:
             json.dump(episode_reward_log, write_file)
         # return episode_reward_log
-        agent.save_weights(args.model, overwrite=True)
+        # self.save_weights(args.model, overwrite=True)
