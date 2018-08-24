@@ -195,7 +195,7 @@ def injectNoise(action):
     action += random_process.sample()
     return action
 
-env = ProstheticsEnv_Chang(args.visualize,skip_frame=3)
+env = ProstheticsEnv_Chang(args.visualize,skip_frame=1)
 # obs = env.reset(project= False)
 # print(obs["joint_pos"]["ankle_l"])
 
@@ -244,7 +244,8 @@ if args.test:
     # Run a single step
     # The grader runs 3 simulations of at most 1000 steps each. We stop after the last one
     # agent.test(env, nb_episodes=10, visualize=False, nb_max_episode_steps=500)
-
+    agent.rollout = False
+    agent.action_noise = True
     for i in range(1000):
         v = np.array(observation).reshape((env.observation_space.shape[0]))
         action = agent.forward(v)

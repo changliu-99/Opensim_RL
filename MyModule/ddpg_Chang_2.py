@@ -111,6 +111,8 @@ class DDPGAgent_Chang_2(Agent):
         action[17] = experiment_act[ind][14]
         action[13] = experiment_act[ind][9]
         # print(action)
+        # random_init = OrnsteinUhlenbeckProcess(theta=.15, mu=0.5, sigma=.2, size=env.get_action_space_size())
+
         action += self.random_process.sample()
         action = np.clip(action,0,1)
         return action
@@ -413,7 +415,7 @@ class DDPGAgent_Chang_2(Agent):
         episode_reward_log =[]
 
         action_repetition = 1
-        param_noise_prob = 0.5
+        param_noise_prob = 0
 
         # create buffer to store action and observations
         states_buffer = []

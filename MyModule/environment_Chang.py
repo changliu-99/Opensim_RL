@@ -103,10 +103,10 @@ class ProstheticsEnv_Chang(ProstheticsEnv):
         #     res += [state_desc["muscles"][muscle]["fiber_length"]]
         #     res += [state_desc["muscles"][muscle]["fiber_velocity"]]
         #
-        cm_pos = [state_desc["misc"]["mass_center_pos"][i] - pelvis[i] for i in range(2)]
-        cm_vel = [state_desc["misc"]["mass_center_vel"][i] - pelvis[i+3] for i in range(2)]
-        cm_acc = [state_desc["misc"]["mass_center_acc"][i] - pelvis[i+6] for i in range(2)]
-        res = res + cm_pos + cm_vel + cm_acc
+        # cm_pos = [state_desc["misc"]["mass_center_pos"][i] - pelvis[i] for i in range(2)]
+        # cm_vel = [state_desc["misc"]["mass_center_vel"][i] - pelvis[i+3] for i in range(2)]
+        # cm_acc = [state_desc["misc"]["mass_center_acc"][i] - pelvis[i+6] for i in range(2)]
+        # res = res + cm_pos + cm_vel + cm_acc
 
         return res
 
@@ -152,7 +152,7 @@ class ProstheticsEnv_Chang(ProstheticsEnv):
     def get_observation_space_size(self):
         if self.prosthetic == True:
             #give up all the muscle state and COM
-            return 101
+            return 95
             # return 158
         return 167
 
