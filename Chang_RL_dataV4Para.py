@@ -71,8 +71,7 @@ parser.add_argument('--model', dest='model', action='store', default="example.h5
 parser.add_argument('--token', dest='token', action='store', required=False)
 parser.add_argument('--resume', dest='resume', action='store_true', default=False)
 args = parser.parse_args()
-
-# Load walking environment
+memoryview# Load walking environment
 
 # Create networks for DDPG
 # Next, we build a very simple model.
@@ -142,7 +141,7 @@ def build_agent(num_action,observation_shape):
     actor = actor_model(num_action,observation_shape)
     critic,critic_action_input = critic_model(num_action,observation_shape)
     agent = DDPGAgent_Chang_2(nb_actions=num_action, actor=actor, critic=critic, critic_action_input=critic_action_input,
-                  memory=memory, memory_interval=1,nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
+                  memory=memory, memory_interval=5,nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
                   train_interval=1, batch_size = 64,random_process=random_process, gamma=.995, target_model_update=1e-3,
                   delta_clip=1.,param_noise=True)
 
