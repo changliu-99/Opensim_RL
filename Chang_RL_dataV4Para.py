@@ -135,8 +135,8 @@ def build_agent(num_action,observation_shape):
     actor = actor_model(num_action,observation_shape)
     critic,critic_action_input = critic_model(num_action,observation_shape)
     agent = DDPGAgent_Chang_2(nb_actions=num_action, actor=actor, critic=critic, critic_action_input=critic_action_input,
-                  memory=memory, memory_interval=5,nb_steps_warmup_critic=300, nb_steps_warmup_actor=300,
-                  train_interval=1, batch_size = 200,random_process=random_process, gamma=.995, target_model_update=1e-3,
+                  memory=memory, memory_interval=1,nb_steps_warmup_critic=300, nb_steps_warmup_actor=300,
+                  train_interval=1, batch_size = 100,random_process=random_process, gamma=.995, target_model_update=1e-3,
                   delta_clip=1.,param_noise=True)
 
     return agent
@@ -188,7 +188,7 @@ def injectNoise(action):
     action += random_process.sample()
     return action
 
-env = ProstheticsEnv_Chang(args.visualize,skip_frame=1)
+env = ProstheticsEnv_Chang(args.visualize,skip_frame=4)
 obs = env.reset(project= False)
 print(obs["body_pos"]["pros_foot_r"])
 

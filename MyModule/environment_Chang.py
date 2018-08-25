@@ -171,6 +171,7 @@ class ProstheticsEnv_Chang(ProstheticsEnv):
         if not prev_state_desc:
             return 0
         return self.compute_reward(action)+self.real_reward()*0.5
+        return self.compute_reward(action)
 
     def compute_reward(self,action):
         state_desc = self.get_state_desc()
@@ -179,6 +180,7 @@ class ProstheticsEnv_Chang(ProstheticsEnv):
         reward_hack = 0
         reward_hack += 1  # small reward for being alive
         reward_hack -= 1e-3 * np.square(action).sum()
+        # reward_hack = 9-np.abs(state_desc["body_vel"]["pelvis"][0] - 3.0)
         # reward_hack += min(0, state_desc["body_pos"]["head"][0] - state_desc["body_pos"]["pelvis"][0]) * 0.2  # penalty for head behind pelvis
         # reward_hack -= sum([max(0.0, k - 0.1) for k in [self.state_desc[""], self.current_state[10]]]) * 0.02  # penalty for straight legs
         # reward_hack -= abs(state_desc["body_acc"]["pelvis"][0])*0.1
