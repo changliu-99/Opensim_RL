@@ -10,7 +10,7 @@ import numpy as np
 import json
 from rl.agents import DDPGAgent
 from rl.memory import SequentialMemory
-from rl.random import OrnsteinUhlenbeckProcess
+# from rl.random import OrnsteinUhlenbeckProcess
 
 from osim.env import *
 from osim.http.client import Client
@@ -24,6 +24,7 @@ import opensim
 from MyModule import DDPGAgent_Chang_2
 from MyModule import ProstheticsEnv_Chang
 from MyModule import LayerNorm
+from MyModule import OrnsteinUhlenbeckProcess
 import tensorflow as tf
 import pandas as pd
 import os
@@ -85,15 +86,6 @@ def initialSample_action(action,experiment_act):
     ind = random.sample(c = list(range(0, 256)))
     action[9,13,15,16] = experiment_act[ind][9,13,15,16]
 
-def process_observation(obs): #attempt to correct for the pelvis position
-    # print(obs)
-    for i in obs['body_pos']:
-        if i != 'pelvis':
-            # obs['body_pos'][i][0] = obs['body_pos'][i][0] - obs['body_pos']['pelvis'][0]
-            obs['body_pos'][i][2] = obs['body_pos'][i][2] - obs['body_pos']['pelvis'][2]
-    # obs['joint_pos']['back'][0] = obs['joint_pos']['back'][0] - obs['joint_pos']['ground_pelvis'][0]
-    # obs['joint_pos']['back'][0] = obs['joint_pos']['back'][0] - obs['joint_pos']['ground_pelvis'][0]
-    return obs
 
 # wrap agent and critic
 def actor_model(num_action,observation_shape):
@@ -102,13 +94,13 @@ def actor_model(num_action,observation_shape):
     # actor.add(Lambda())
     # actor.add(Convolution2D(64, 4, 4, subsample=(4,4),init=lambda shape, name: normal(shape, scale=0.01, name=name), border_mode='same'))
     actor.add(Flatten(input_shape=(1,) + observation_shape))
-    actor.add(Dense(128))
+    actor.add(Dense(64))
     actor.add(LayerNorm())
-    actor.add(Activation('relu'))
+    actor.add(Activation('elu'))
     actor.add(Dense(64))
     # actor.add(BatchNormalization(axis=1,input_shape=64))
     actor.add(LayerNorm())
-    actor.add(Activation('relu'))
+    actor.add(Activation('elu'))
     actor.add(Dense(num_action))
     # actor.add(BatchNormalization(axis=1,input_shape=64))
     # actor.add(LayerNorm())
@@ -139,12 +131,12 @@ def critic_model(num_action,observation_shape):
 def build_agent(num_action,observation_shape):
     memory = SequentialMemory(limit=1000000, window_length=1)
     random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.2,
-    size=env.get_action_space_size(),sigma_min=0.05,n_steps_annealing=10000)
+    size=env.get_action_space_size(),sigma_min=0.05,n_steps_annealing=1000000)
     actor = actor_model(num_action,observation_shape)
     critic,critic_action_input = critic_model(num_action,observation_shape)
     agent = DDPGAgent_Chang_2(nb_actions=num_action, actor=actor, critic=critic, critic_action_input=critic_action_input,
-                  memory=memory, memory_interval=5,nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,
-                  train_interval=1, batch_size = 64,random_process=random_process, gamma=.995, target_model_update=1e-3,
+                  memory=memory, memory_interval=5,nb_steps_warmup_critic=300, nb_steps_warmup_actor=300,
+                  train_interval=1, batch_size = 200,random_process=random_process, gamma=.995, target_model_update=1e-3,
                   delta_clip=1.,param_noise=True)
 
     return agent
@@ -206,7 +198,7 @@ observation_shape = env.observation_space.shape
 agent = build_agent(nb_actions,observation_shape)
 # Total number of steps in training
 nallsteps = args.steps
-agent.compile(Adam(lr=.001, clipnorm=1.), metrics=['mae'])
+agent.compile([Adam(lr=.0001, clipnorm=1.),Adam(lr=0.0003,clipnorm = 1)], metrics=['mae'])
 
 if args.train:
     # TODO: warp this training as function
@@ -216,6 +208,7 @@ if args.train:
 
     print('training')
     init_action =  np.clip(initialSample_action_new(a_new),0,1)
+    # print(init_action)
     agent.train(env,args.steps)
     # agent.fit(env, nb_steps=nallsteps, visualize=False, verbose=1, nb_max_episode_steps=env.time_limit, log_interval=10000)
     # After training is done, we save the final weights.
@@ -248,6 +241,7 @@ if args.test:
     agent.rollout = False
     agent.action_noise = False
     agent.random_process.reset_states()
+    print(agent.random_process.current_sigma)
     for i in range(1000):
         v = np.array(observation).reshape((env.observation_space.shape[0]))
         action = agent.forward(v)
@@ -255,7 +249,7 @@ if args.test:
         # observation = process_observation(observation)
         # project to np.array
         # project_observation = dict_to_list_Chang(observation)
-        print(observation)
+        # print(observation)
         real_reward = env.real_reward()
         total_reward += reward
         total_real_reward += real_reward

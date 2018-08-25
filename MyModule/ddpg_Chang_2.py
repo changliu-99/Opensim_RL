@@ -8,7 +8,8 @@ import keras.backend as K
 import keras.optimizers as optimizers
 
 from rl.core import Agent
-from rl.random import OrnsteinUhlenbeckProcess
+# from rl.random import OrnsteinUhlenbeckProcess
+from MyModule import random_process_Chang
 from rl.util import *
 import json
 import pandas as pd
@@ -153,7 +154,7 @@ class DDPGAgent_Chang_2(Agent):
         # We also compile the actor. We never optimize the actor using Keras but instead compute
         # the policy gradient ourselves. However, we need the actor in feed-forward mode, hence
         # we also compile it with any optimzer and
-        self.actor.compile(optimizer='sgd', loss='mse')
+        self.actor.compile(optimizer=actor_optimizer, loss=clipped_error, metrics=actor_metrics)
 
         # Compile the critic.
         if self.target_model_update < 1.:
@@ -204,7 +205,7 @@ class DDPGAgent_Chang_2(Agent):
         # print(orig_act)
 
         sigma_min = 0.
-        sigma_max = 100.
+        sigma_max = 50
         sigma = sigma_max
         step = 0
         while step < max_steps:
@@ -227,6 +228,7 @@ class DDPGAgent_Chang_2(Agent):
                 sigma_min = sigma
             sigma = sigma_min + (sigma_max - sigma_min) / 2
             step += 1
+        # print(step)
 
 
     def load_weights(self, filepath):
@@ -399,7 +401,7 @@ class DDPGAgent_Chang_2(Agent):
     def train(self,env,nallsteps):
         nb_max_episode_steps = env.time_limit
         nb_max_start_steps = 20
-        rollout_steps = 5
+        rollout_steps = 100
 
         log_interval=10000
         max_steps = nallsteps
@@ -432,6 +434,7 @@ class DDPGAgent_Chang_2(Agent):
                     episode_reward = np.float32(0)
                     episode_real_reward = np.float32(0)
                     self.random_process.reset_states()
+                    # print(self.random_process.current_sigma)
                     # observation = env.reset()
                     # to start new simulations
                     action = self.initialSample_action_new(a_new)
@@ -451,14 +454,31 @@ class DDPGAgent_Chang_2(Agent):
                         self.memory.append(self.recent_observation, self.recent_action, reward, terminal=done,
                                            training=self.training)
                         self.step += 1
+                        episode_step += 1
+                        episode_reward += reward
+                        episode_real_reward += info['original_reward']
+
                         if done:
                             warnings.warn('Env ended before {} random steps could be performed at the start. You should probably lower the')
                             # observation = deepcopy(env.reset())
-                            observation = None
-                            break
+                            print(episode_reward, ' steps=',episode_step,' ',self.step,'/',max_steps)
+                            print(episode_real_reward,'real')
+                            episode_reward_log.append(episode_real_reward)
+
+                            episode_step = np.int16(0)
+                            episode_reward = np.float32(0)
+                            episode_real_reward = np.float32(0)
+                            # reset
+                            action = self.initialSample_action_new(a_new)
+                            # action = env.action_space.sample()
+                            action = np.clip(action,0,1)
+                            observation = env.reset()
+
+                            # break
 
             # print(observation)
                 self.rollout = False
+                self.action_noise = False
                 assert episode_reward is not None
                 assert episode_step is not None
                 assert observation is not None
@@ -471,14 +491,14 @@ class DDPGAgent_Chang_2(Agent):
                 # if action_noise:
                 #     action = injectNoise(action)
                 # print (action)
-                reward = np.float32(0)
+                # reward = np.float32(0)
 
-                accumulated_info = {}
                 done = False
                 abort = False
 
                 observation, reward, done, info = env.step(action.tolist())
-                # print(observation[0])
+                episode_step += 1
+                self.step += 1
                 episode_reward += reward
                 episode_real_reward += info['original_reward']
                 states_buffer.append([v])
@@ -495,10 +515,9 @@ class DDPGAgent_Chang_2(Agent):
                     'reward': reward,
                     'metrics': metrics,
                     'episode': episode,
-                    'info': accumulated_info,
+                    'info': info,
                 }
-                episode_step += 1
-                self.step += 1
+
                 # print(env.reward(),'/',max_steps)
                 if done:
                     # We are in a terminal state but the agent hasn't yet seen it. We therefore
@@ -528,6 +547,7 @@ class DDPGAgent_Chang_2(Agent):
                     if not self.action_noise:
                         print('perturb')
                         self.setup_param_noise(states_buffer, self.random_process.current_sigma)
+                        print(self.random_process.current_sigma)
                     # del states_np
                     del states_buffer[:]
                     del action_buffer[:]
