@@ -419,7 +419,7 @@ class DDPGAgent_Chang_2(Agent):
         nb_max_episode_steps = env.time_limit
         nb_max_start_steps = 20
         rollout_steps = 6
-        training_steps = 1
+        training_steps = 100
 
         log_interval=10000
         max_steps = nallsteps
