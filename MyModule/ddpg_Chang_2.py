@@ -185,13 +185,16 @@ class DDPGAgent_Chang_2(Agent):
         updates += self.actor.updates  # include other updates of the actor, e.g. for BN
 
         # Finally, combine it all into a callable function.
+        # print()
         if K.backend() == 'tensorflow':
             self.actor_train_fn = K.function(critic_inputs + [K.learning_phase()],
                                              [self.actor(critic_inputs)], updates=updates)
+            # print("test")
         else:
             if self.uses_learning_phase:
                 critic_inputs += [K.learning_phase()]
             self.actor_train_fn = K.function(critic_inputs, [self.actor(critic_inputs)], updates=updates)
+
         self.actor_optimizer = actor_optimizer
 
         self.compiled = True
@@ -406,7 +409,8 @@ class DDPGAgent_Chang_2(Agent):
                     else:
                         inputs = [state0_batch]
                     if self.uses_learning_phase:
-                        inputs += [self.training]
+                        # inputs += [self.training]
+                        inputs += [True]
                     action_values = self.actor_train_fn(inputs)[0]
                     assert action_values.shape == (self.batch_size, self.nb_actions)
 
@@ -438,8 +442,7 @@ class DDPGAgent_Chang_2(Agent):
         param_noise_prob = 0.5
 
         # create buffer to store action and observations
-        states_buffer = []
-        action_buffer = []
+
         self.action_noise = False
         self.rollout = False
         print (self.training)
@@ -458,25 +461,25 @@ class DDPGAgent_Chang_2(Agent):
                 action = np.clip(action,0,1)
                 observation = env.reset()
                 v = np.array(observation).reshape((env.observation_space.shape[0]))
-                states_buffer.append([v])
-                action_buffer.append(action)
+
                 self.rollout = True
             while self.step < max_steps:
                     # start of a new episode
                     # callbacks.on_episode_begin(episode)
 
                     # initialize parameters
+
+                    if self.step > self.nb_steps_warmup_actor:
+                        self.action_noise = np.random.rand() < 1 - param_noise_prob
+                        if not self.action_noise:
+                            # print('perturb')
+                            self.setup_param_noise(self.random_process.current_sigma)
+                            # print(self.random_process.current_sigma)
+                            self.rollout = False
+                        else:
+                            self.rollout = True
                     for _ in range(rollout_steps):
                         self.training = True
-                        if self.step > self.nb_steps_warmup_actor:
-                            self.action_noise = np.random.rand() < 1 - param_noise_prob
-                            if not self.action_noise:
-                                # print('perturb')
-                                self.setup_param_noise(self.random_process.current_sigma)
-                                # print(self.random_process.current_sigma)
-                                self.rollout = False
-                            else:
-                                self.rollout = True
 
                         # add initialize parameters for the models
                         v = np.array(observation).reshape((env.observation_space.shape[0]))
@@ -485,7 +488,7 @@ class DDPGAgent_Chang_2(Agent):
                         observation, reward, done, info = env.step(action)
                         # self.memory.append(self.recent_observation, self.recent_action, reward, terminal=done,
                         #                    training=self.training)
-                        self.backward(reward, terminal=done)
+                        self.backward(reward, terminal=done) #only append memory but not update
                         self.step += 1
                         episode_step += 1
                         episode_reward += reward
