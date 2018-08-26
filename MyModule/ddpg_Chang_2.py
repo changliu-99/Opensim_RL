@@ -97,6 +97,7 @@ class DDPGAgent_Chang_2(Agent):
 
     @property
     def uses_learning_phase(self):
+        # print (self.actor.uses_learning_phase)
         return self.actor.uses_learning_phase or self.critic.uses_learning_phase
 
     def initialSample_action_new(self,experiment_act):
@@ -335,84 +336,84 @@ class DDPGAgent_Chang_2(Agent):
                                training=self.training)
 
         metrics = [np.nan for _ in self.metrics_names]
-        if self.training:
+        if not self.training:
             # excecute when training is false
             # We're done here. No need to update the experience memory since we only use the working
             # memory to obtain the state over the most recent observations.
             return metrics
-        else: #training = false
+         #training = false
             # print("update")
         # Train the network on a single stochastic batch.
-            can_train_either = self.step > self.nb_steps_warmup_critic or self.step > self.nb_steps_warmup_actor
-            if can_train_either and self.step % self.train_interval == 0:
-                experiences = self.memory.sample(self.batch_size)
-                assert len(experiences) == self.batch_size
+        can_train_either = self.step > self.nb_steps_warmup_critic or self.step > self.nb_steps_warmup_actor
+        if can_train_either and self.step % self.train_interval == 0:
+            experiences = self.memory.sample(self.batch_size)
+            assert len(experiences) == self.batch_size
 
-                # Start by extracting the necessary parameters (we use a vectorized implementation).
-                state0_batch = []
-                reward_batch = []
-                action_batch = []
-                terminal1_batch = []
-                state1_batch = []
-                for e in experiences:
-                    state0_batch.append(e.state0)
-                    state1_batch.append(e.state1)
-                    reward_batch.append(e.reward)
-                    action_batch.append(e.action)
-                    terminal1_batch.append(0. if e.terminal1 else 1.)
-                # print(state0_batch)
-                # Prepare and validate parameters.
-                state0_batch = self.process_state_batch(state0_batch)
-                state1_batch = self.process_state_batch(state1_batch)
-                terminal1_batch = np.array(terminal1_batch)
-                reward_batch = np.array(reward_batch)
-                action_batch = np.array(action_batch)
-                assert reward_batch.shape == (self.batch_size,)
-                assert terminal1_batch.shape == reward_batch.shape
-                assert action_batch.shape == (self.batch_size, self.nb_actions)
+            # Start by extracting the necessary parameters (we use a vectorized implementation).
+            state0_batch = []
+            reward_batch = []
+            action_batch = []
+            terminal1_batch = []
+            state1_batch = []
+            for e in experiences:
+                state0_batch.append(e.state0)
+                state1_batch.append(e.state1)
+                reward_batch.append(e.reward)
+                action_batch.append(e.action)
+                terminal1_batch.append(0. if e.terminal1 else 1.)
+            # print(state0_batch)
+            # Prepare and validate parameters.
+            state0_batch = self.process_state_batch(state0_batch)
+            state1_batch = self.process_state_batch(state1_batch)
+            terminal1_batch = np.array(terminal1_batch)
+            reward_batch = np.array(reward_batch)
+            action_batch = np.array(action_batch)
+            assert reward_batch.shape == (self.batch_size,)
+            assert terminal1_batch.shape == reward_batch.shape
+            assert action_batch.shape == (self.batch_size, self.nb_actions)
 
-                # Update critic, if warm up is over.
-                if self.step > self.nb_steps_warmup_critic:
-                    target_actions = self.target_actor.predict_on_batch(state1_batch)
-                    assert target_actions.shape == (self.batch_size, self.nb_actions)
-                    if len(self.critic.inputs) >= 3:
-                        state1_batch_with_action = state1_batch[:]
-                    else:
-                        state1_batch_with_action = [state1_batch]
-                    state1_batch_with_action.insert(self.critic_action_input_idx, target_actions)
-                    target_q_values = self.target_critic.predict_on_batch(state1_batch_with_action).flatten()
-                    assert target_q_values.shape == (self.batch_size,)
+            # Update critic, if warm up is over.
+            if self.step > self.nb_steps_warmup_critic:
+                target_actions = self.target_actor.predict_on_batch(state1_batch)
+                assert target_actions.shape == (self.batch_size, self.nb_actions)
+                if len(self.critic.inputs) >= 3:
+                    state1_batch_with_action = state1_batch[:]
+                else:
+                    state1_batch_with_action = [state1_batch]
+                state1_batch_with_action.insert(self.critic_action_input_idx, target_actions)
+                target_q_values = self.target_critic.predict_on_batch(state1_batch_with_action).flatten()
+                assert target_q_values.shape == (self.batch_size,)
 
-                    # Compute r_t + gamma * max_a Q(s_t+1, a) and update the target ys accordingly,
-                    # but only for the affected output units (as given by action_batch).
-                    discounted_reward_batch = self.gamma * target_q_values
-                    discounted_reward_batch *= terminal1_batch
-                    assert discounted_reward_batch.shape == reward_batch.shape
-                    targets = (reward_batch + discounted_reward_batch).reshape(self.batch_size, 1)
+                # Compute r_t + gamma * max_a Q(s_t+1, a) and update the target ys accordingly,
+                # but only for the affected output units (as given by action_batch).
+                discounted_reward_batch = self.gamma * target_q_values
+                discounted_reward_batch *= terminal1_batch
+                assert discounted_reward_batch.shape == reward_batch.shape
+                targets = (reward_batch + discounted_reward_batch).reshape(self.batch_size, 1)
 
-                    # Perform a single batch update on the critic network.
-                    if len(self.critic.inputs) >= 3:
-                        state0_batch_with_action = state0_batch[:]
-                    else:
-                        state0_batch_with_action = [state0_batch]
-                    state0_batch_with_action.insert(self.critic_action_input_idx, action_batch)
-                    metrics = self.critic.train_on_batch(state0_batch_with_action, targets)
-                    # print(self.critic.metrics_names)
-                    if self.processor is not None:
-                        metrics += self.processor.metrics
+                # Perform a single batch update on the critic network.
+                if len(self.critic.inputs) >= 3:
+                    state0_batch_with_action = state0_batch[:]
+                else:
+                    state0_batch_with_action = [state0_batch]
+                state0_batch_with_action.insert(self.critic_action_input_idx, action_batch)
+                metrics = self.critic.train_on_batch(state0_batch_with_action, targets)
+                # print(self.critic.metrics_names)
+                if self.processor is not None:
+                    metrics += self.processor.metrics
 
-                # Update actor, if warm up is over.
-                if self.step > self.nb_steps_warmup_actor:
-                    # TODO: implement metrics for actor
-                    if len(self.actor.inputs) >= 2:
-                        inputs = state0_batch[:]
-                    else:
-                        inputs = [state0_batch]
-                    if self.uses_learning_phase:
-                        # inputs += [self.training]
-                        inputs += [True]
-                    action_values = self.actor_train_fn(inputs)[0]
-                    assert action_values.shape == (self.batch_size, self.nb_actions)
+            # Update actor, if warm up is over.
+            if self.step > self.nb_steps_warmup_actor:
+                # TODO: implement metrics for actor
+                if len(self.actor.inputs) >= 2:
+                    inputs = state0_batch[:]
+                else:
+                    inputs = [state0_batch]
+                if self.uses_learning_phase:
+                    inputs += [self.training]
+                    # inputs += [True]
+                action_values = self.actor_train_fn(inputs)[0]
+                assert action_values.shape == (self.batch_size, self.nb_actions)
 
         if self.target_model_update >= 1 and self.step % self.target_model_update == 0:
             self.update_target_models_hard()
@@ -423,7 +424,7 @@ class DDPGAgent_Chang_2(Agent):
         nb_max_episode_steps = env.time_limit
         nb_max_start_steps = 20
         rollout_steps = 10
-        training_steps = 20
+        training_steps = 10
 
         log_interval=10000
         max_steps = nallsteps
@@ -439,7 +440,7 @@ class DDPGAgent_Chang_2(Agent):
         episode_reward_log =[]
 
         action_repetition = 1
-        param_noise_prob = 0.5
+        param_noise_prob = 0
 
         # create buffer to store action and observations
 
@@ -461,34 +462,34 @@ class DDPGAgent_Chang_2(Agent):
                 action = np.clip(action,0,1)
                 observation = env.reset()
                 v = np.array(observation).reshape((env.observation_space.shape[0]))
-
                 self.rollout = True
             while self.step < max_steps:
                     # start of a new episode
                     # callbacks.on_episode_begin(episode)
 
                     # initialize parameters
-
-                    if self.step > self.nb_steps_warmup_actor:
-                        self.action_noise = np.random.rand() < 1 - param_noise_prob
-                        if not self.action_noise:
-                            # print('perturb')
-                            self.setup_param_noise(self.random_process.current_sigma)
-                            # print(self.random_process.current_sigma)
-                            self.rollout = False
-                        else:
-                            self.rollout = True
                     for _ in range(rollout_steps):
                         self.training = True
+                        if self.step > self.nb_steps_warmup_actor:
+                            self.action_noise = np.random.rand() < 1 - param_noise_prob
+                            if not self.action_noise:
+                                # print('perturb')
+                                self.setup_param_noise(self.random_process.current_sigma)
+                                # print(self.random_process.current_sigma)
+                                self.rollout = False
+                            else:
+                                self.rollout = True
 
                         # add initialize parameters for the models
                         v = np.array(observation).reshape((env.observation_space.shape[0]))
                         action = self.forward(v)
                         # print(action[0])
                         observation, reward, done, info = env.step(action)
+                        self.memory.append(self.recent_observation, self.recent_action, reward, terminal=done,
+                                           training=self.training)
                         # self.memory.append(self.recent_observation, self.recent_action, reward, terminal=done,
                         #                    training=self.training)
-                        self.backward(reward, terminal=done) #only append memory but not update
+                         #only append memory but not update
                         self.step += 1
                         episode_step += 1
                         episode_reward += reward
@@ -499,7 +500,9 @@ class DDPGAgent_Chang_2(Agent):
 
                         if done:
                             action = self.forward(v)
-                            self.backward(0., terminal=False)
+                            # self.backward(0., terminal=False)
+                            self.memory.append(self.recent_observation, self.recent_action, 0, False,
+                                               training=self.training)
                             warnings.warn('Env ended before {} random steps could be performed at the start. You should probably lower the')
                             # observation = deepcopy(env.reset())
                             print(episode_reward, ' steps=',episode_step,' ',self.step,'/',max_steps)
@@ -515,33 +518,27 @@ class DDPGAgent_Chang_2(Agent):
                             # action = env.action_space.sample()
                             action = np.clip(action,0,1)
                             observation = env.reset()
-
-
                             # break
                     for _ in range(training_steps):
                         # print(observation)
-                        self.training = False
                         self.rollout = False
                         self.action_noise = False
                         # assert episode_reward is not None
                         # assert episode_step is not None
                         assert observation is not None
-                        metrics = self.backward(reward, terminal=done)
+
                         # print(metrics)
                         # print('initialization')
                         # This is were all of the work happens. We first perceive and compute the action
                                 # (forward step) and then use the reward to improve (backward step).
-                        # v = np.array(observation).reshape((env.observation_space.shape[0]))
-                        # action = self.forward(v)
-                        # observation, reward, done, info = env.step(action.tolist())
-                        # episode_step += 1
-                        # self.step += 1
-                        # episode_reward += reward
-                        # episode_real_reward += info['original_reward']
-                        # states_buffer.append([v])
-                        # action_buffer.append(action)
-
-
+                        v = np.array(observation).reshape((env.observation_space.shape[0]))
+                        action = self.forward(v)
+                        observation, reward, done, info = env.step(action.tolist())
+                        metrics = self.backward(reward, terminal=done)
+                        episode_step += 1
+                        self.step += 1
+                        episode_reward += reward
+                        episode_real_reward += info['original_reward']
                             # experience log in agent.backward
                         # print(episode_reward)
                         # print(episode_real_reward)
@@ -553,33 +550,30 @@ class DDPGAgent_Chang_2(Agent):
                         #     'episode': episode,
                         #     'info': info,
                         # }
-
                         # print(env.reward(),'/',max_steps)
-
-                        # if done:
-                        #     # We are in a terminal state but the agent hasn't yet seen it. We therefore
-                        #     # perform one more forward-backward call and simply ignore the action before
-                        #     # resetting the environment. We need to pass in `terminal=False` here since
-                        #     # the *next* state, that is the state of the newly reset environment, is
-                        #     # always non-terminal by convention.
-                        #     states_buffer.append([v])
-                        #     action_buffer.append(action)
-                        #
-                        #     # states_np = np.asarray(states_buffer,dtype=np.float32)
-                        #     episode_logs = {
-                        #     'episode_reward': episode_reward,
-                        #     'nb_episode_steps': episode_step,
-                        #     'nb_steps': self.step,
-                        #     }
-                        #     print(episode_reward, ' steps=',episode_step,' ',self.step,'/',max_steps)
-                        #     print(episode_real_reward,'real')
-                        #     episode_reward_log.append(episode_real_reward)
-                        #     episode += 1
-                        #     observation = None
-                        #     episode_step = np.int16(0)
-                        #     episode_reward = np.float32(0)
-                        #     episode_real_reward = np.float32(0)
-                        #
+                        if done:
+                            # We are in a terminal state but the agent hasn't yet seen it. We therefore
+                            # perform one more forward-backward call and simply ignore the action before
+                            # resetting the environment. We need to pass in `terminal=False` here since
+                            # the *next* state, that is the state of the newly reset environment, is
+                            # always non-terminal by convention.
+                            # states_np = np.asarray(states_buffer,dtype=np.float32)
+                            episode_logs = {
+                            'episode_reward': episode_reward,
+                            'nb_episode_steps': episode_step,
+                            'nb_steps': self.step,
+                            }
+                            print(episode_reward, ' steps=',episode_step,' ',self.step,'/',max_steps)
+                            print(episode_real_reward,'real')
+                            episode_reward_log.append(episode_real_reward)
+                            episode += 1
+                            episode_step = np.int16(0)
+                            episode_reward = np.float32(0)
+                            episode_real_reward = np.float32(0)
+                            action = self.initialSample_action_new(a_new)
+                            # action = env.action_space.sample()
+                            action = np.clip(action,0,1)
+                            observation = env.reset()
                         #
                         #     # del states_np
                         #     del states_buffer[:]
