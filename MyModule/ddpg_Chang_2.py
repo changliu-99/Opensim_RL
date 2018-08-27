@@ -570,7 +570,7 @@ class DDPGAgent_Chang_2(Agent):
                             episode_reward_log.append(episode_real_reward)
                             episode += 1
                             if episode % 500 == 0:
-                                self.save_weights(args.model, overwrite=True)
+                                self.save_weights("temp_saving", overwrite=True)
                             episode_step = np.int16(0)
                             episode_reward = np.float32(0)
                             episode_real_reward = np.float32(0)
