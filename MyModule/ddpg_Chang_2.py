@@ -503,12 +503,14 @@ class DDPGAgent_Chang_2(Agent):
                             # self.backward(0., terminal=False)
                             self.memory.append(self.recent_observation, self.recent_action, 0, False,
                                                training=self.training)
-                            warnings.warn('Env ended before {} random steps could be performed at the start. You should probably lower the')
+                            # warnings.warn('Env ended before {} random steps could be performed at the start. You should probably lower the')
                             # observation = deepcopy(env.reset())
                             print(episode_reward, ' steps=',episode_step,' ',self.step,'/',max_steps)
                             print(episode_real_reward,'real')
                             episode_reward_log.append(episode_real_reward)
                             episode += 1
+                            if episode % 500 == 0:
+                                self.save_weights(args.model, overwrite=True)
                             episode_step = np.int16(0)
                             episode_reward = np.float32(0)
                             episode_real_reward = np.float32(0)
@@ -567,6 +569,8 @@ class DDPGAgent_Chang_2(Agent):
                             print(episode_real_reward,'real')
                             episode_reward_log.append(episode_real_reward)
                             episode += 1
+                            if episode % 500 == 0:
+                                self.save_weights(args.model, overwrite=True)
                             episode_step = np.int16(0)
                             episode_reward = np.float32(0)
                             episode_real_reward = np.float32(0)
