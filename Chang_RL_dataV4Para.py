@@ -194,6 +194,7 @@ print(obs["body_pos"]["pros_foot_r"])
 
 nb_actions = env.action_space.shape[0]
 observation_shape = env.observation_space.shape
+print(observation_shape)
 
 agent = build_agent(nb_actions,observation_shape)
 # Total number of steps in training
@@ -207,9 +208,8 @@ if args.train:
         print('resume')
 
     print('training')
-    init_action =  np.clip(initialSample_action_new(a_new),0,1)
     # print(init_action)
-    agent.train(env,args.steps)
+    agent.train(args.steps)
     # agent.fit(env, nb_steps=nallsteps, visualize=False, verbose=1, nb_max_episode_steps=env.time_limit, log_interval=10000)
     # After training is done, we save the final weights.
 

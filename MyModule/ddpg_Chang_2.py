@@ -13,6 +13,8 @@ from MyModule import random_process_Chang
 from rl.util import *
 import json
 import pandas as pd
+import pickle
+from MyModule.environment_Chang import ProstheticsEnv_Chang
 
 current_path = os.path.dirname(os.path.realpath(__file__))
 path = os.path.join(current_path,"../action_new.csv")
@@ -256,6 +258,10 @@ class DDPGAgent_Chang_2(Agent):
         self.actor.load_weights(actor_filepath)
         self.critic.load_weights(critic_filepath)
         self.update_target_models_hard()
+        print("load weights success")
+        self.memory.load('memory.pickle')
+        print("memory is", len(self.memory.observations))
+        print("rmp success")
 
     def save_weights(self, filepath, overwrite=False):
         filename, extension = os.path.splitext(filepath)
@@ -420,7 +426,8 @@ class DDPGAgent_Chang_2(Agent):
         # print(metrics)
         return metrics
 
-    def train(self,env,nallsteps):
+    def train(self,nallsteps):
+        env = ProstheticsEnv_Chang(visualize=False,skip_frame=4)
         nb_max_episode_steps = env.time_limit
         nb_max_start_steps = 20
         rollout_steps = 10
@@ -440,8 +447,8 @@ class DDPGAgent_Chang_2(Agent):
         episode_reward_log =[]
 
         action_repetition = 1
-        param_noise_prob = 0
-
+        param_noise_prob = 0.3
+        best_reward = 0
         # create buffer to store action and observations
 
         self.action_noise = False
@@ -463,6 +470,7 @@ class DDPGAgent_Chang_2(Agent):
                 observation = env.reset()
                 v = np.array(observation).reshape((env.observation_space.shape[0]))
                 self.rollout = True
+
             while self.step < max_steps:
                     # start of a new episode
                     # callbacks.on_episode_begin(episode)
@@ -503,14 +511,19 @@ class DDPGAgent_Chang_2(Agent):
                             # self.backward(0., terminal=False)
                             self.memory.append(self.recent_observation, self.recent_action, 0, False,
                                                training=self.training)
+
                             # warnings.warn('Env ended before {} random steps could be performed at the start. You should probably lower the')
                             # observation = deepcopy(env.reset())
                             print(episode_reward, ' steps=',episode_step,' ',self.step,'/',max_steps)
                             print(episode_real_reward,'real')
                             episode_reward_log.append(episode_real_reward)
                             episode += 1
-                            if episode % 500 == 0:
-                                self.save_weights(args.model, overwrite=True)
+                            if episode % 20 == 0:
+                                self.save_weights("temptemp_saving", overwrite=True)
+                                self.memory.save("memory.pickle")
+                            if episode_real_reward > best_reward:
+                                best_reward = episode_real_reward
+                                self.save_weights("goodtemp_saving", overwrite=True)
                             episode_step = np.int16(0)
                             episode_reward = np.float32(0)
                             episode_real_reward = np.float32(0)
@@ -569,8 +582,12 @@ class DDPGAgent_Chang_2(Agent):
                             print(episode_real_reward,'real')
                             episode_reward_log.append(episode_real_reward)
                             episode += 1
-                            if episode % 500 == 0:
-                                self.save_weights("temp_saving", overwrite=True)
+                            if episode % 20 == 0:
+                                self.save_weights("temptemp_saving", overwrite=True)
+                                self.memory.save("memory.pickle")
+                            if episode_real_reward > best_reward:
+                                best_reward = episode_real_reward
+                                self.save_weights("goodtemp_saving", overwrite=True)
                             episode_step = np.int16(0)
                             episode_reward = np.float32(0)
                             episode_real_reward = np.float32(0)
@@ -582,6 +599,8 @@ class DDPGAgent_Chang_2(Agent):
                         #     # del states_np
                         #     del states_buffer[:]
                         #     del action_buffer[:]
+                    if self.step % 100000 ==0:
+                        env = ProstheticsEnv_Chang(visualize=False,skip_frame=4)
 
         except KeyboardInterrupt:
             did_abort = True
