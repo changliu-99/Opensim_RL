@@ -9,7 +9,8 @@ from keras.optimizers import Adam
 import numpy as np
 import json
 from rl.agents import DDPGAgent
-from rl.memory import SequentialMemory
+# from rl.memory import SequentialMemory
+from MyModule.memory import SequentialMemory
 # from rl.random import OrnsteinUhlenbeckProcess
 
 from osim.env import *
